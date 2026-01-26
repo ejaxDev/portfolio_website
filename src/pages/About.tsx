@@ -23,7 +23,7 @@ const About: React.FC = () => {
             <div className="absolute inset-0 bg-gradient-to-r from-blue-500 to-cyan-500 rounded-lg opacity-20 blur-3xl"></div>
             <div className="relative h-96 bg-gradient-to-br from-slate-700 to-slate-800 rounded-lg flex items-center justify-center border border-slate-600 overflow-hidden">
                 <img
-                src="/portfolio_website/public/good_boy_pic1.jpeg"
+                src="/good_boy_pic1.jpeg"
                 alt="Profile"
                 className="w-full h-full object-cover rounded-lg"
                 />
