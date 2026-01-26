@@ -19,7 +19,7 @@ const Projects: React.FC = () => {
       ],
       image: '📊',
       github: '#',
-      demo: '/project-demo/1',
+      demo: '/portfolio_website/project-demo/1',
       highlights: [
         'Feature engineering from historical game data',
         'Out-of-sample validation on full season',
@@ -41,7 +41,7 @@ const Projects: React.FC = () => {
       ],
       image: '🤖',
       github: '#',
-      demo: '/project-demo/2',
+      demo: '/portfolio_website/project-demo/2',
       highlights: [
         'Live market data integration via WebSocket',
         'Real-time XGBoost model inference',
