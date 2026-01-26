@@ -18,13 +18,13 @@ const Home: React.FC = () => {
               </p>
               <div className="flex gap-4 pt-4">
                 <Link
-                  to="/projects"
+                  to="/portfolio_website/projects"
                   className="px-8 py-3 bg-blue-500 hover:bg-blue-600 text-white font-semibold rounded-lg transition-colors"
                 >
                   View My Work
                 </Link>
                 <Link
-                  to="/contact"
+                  to="/portfolio_website/contact"
                   className="px-8 py-3 border-2 border-slate-400 hover:border-white text-white font-semibold rounded-lg transition-colors"
                 >
                   Get In Touch
