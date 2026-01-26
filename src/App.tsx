@@ -2,9 +2,9 @@ import React from "react";
 import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
 import NavBar from "./components/layout/NavBar";
 import Home from './pages/Home'
-import About from './pages/About.tsx'
-import Projects from './pages/Projects.tsx'
-import ProjectDemo from './pages/ProjectDemo.tsx'
+import About from './pages/About'
+import Projects from './pages/Projects'
+import ProjectDemo from './pages/ProjectDemo'
 
 const App: React.FC = () => {
   return (
