@@ -18,13 +18,13 @@ const Home: React.FC = () => {
               </p>
               <div className="flex gap-4 pt-4">
                 <Link
-                  to="/portfolio_website/projects"
+                  to="/projects"
                   className="px-8 py-3 bg-blue-500 hover:bg-blue-600 text-white font-semibold rounded-lg transition-colors"
                 >
                   View My Work
                 </Link>
                 <Link
-                  to="/portfolio_website/contact"
+                  to="/contact"
                   className="px-8 py-3 border-2 border-slate-400 hover:border-white text-white font-semibold rounded-lg transition-colors"
                 >
                   Get In Touch
@@ -38,7 +38,7 @@ const Home: React.FC = () => {
             <div className="absolute inset-0 bg-gradient-to-r from-blue-500 to-cyan-500 rounded-lg opacity-20 blur-3xl"></div>
             <div className="relative h-full bg-gradient-to-br from-slate-700 to-slate-800 rounded-lg flex items-center justify-center border border-slate-600 overflow-hidden">
                 <img
-                src="/portfolio_website/good_boy_pic2.jpeg" // replace with your image URL or import
+                src="good_boy_pic2.jpeg" // replace with your image URL or import
                 alt="Profile"
                 className="object-cover w-full h-full rounded-lg"
                 />

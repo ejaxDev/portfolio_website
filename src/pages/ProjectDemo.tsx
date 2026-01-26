@@ -321,7 +321,7 @@ export default {
                   </div>
                   <div className="p-6">
                     <h3 className="text-xl font-bold text-white mb-2">{plot.title}</h3>
-                    <p className="text-slate-300">{plot.description}</p>
+                        <div className="text-slate-300">{plot.description}</div>
                   </div>
                 </div>
               ))}
@@ -386,7 +386,7 @@ export default {
                 {selectedImage.title}
                 {getCurrentImageLabel() && <span className="text-blue-400 text-lg ml-2">— {getCurrentImageLabel()}</span>}
               </h3>
-              <p className="text-slate-300">{selectedImage.description}</p>
+                    <div className="text-slate-300">{selectedImage.description}</div>
             </div>
           </div>
         </div>

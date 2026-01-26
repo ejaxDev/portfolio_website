@@ -8,14 +8,14 @@ import ProjectDemo from './pages/ProjectDemo'
 
 const App: React.FC = () => {
   return (
-    <Router>
+    <Router basename="/portfolio_website">
       <NavBar />
       <div className="pt-16">
         <Routes>
-          <Route path='/portfolio_website' element={<Home></Home>}></Route>
-          <Route path='/portfolio_website/about' element={<About></About>}></Route>
-          <Route path='portfolio_website/projects' element={<Projects></Projects>}></Route>
-          <Route path='/portfolio_website/project-demo/:projectId' element={<ProjectDemo></ProjectDemo>}></Route>
+          <Route path="/" element={<Home />} />
+          <Route path="/about" element={<About />} />
+          <Route path="/projects" element={<Projects />} />
+          <Route path="/project-demo/:projectId" element={<ProjectDemo />} />
         </Routes>
       </div>
     </Router>

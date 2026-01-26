@@ -5,7 +5,7 @@ const NavBar: React.FC = () => {
   return (
     <nav className="bg-gradient-to-r from-slate-900 to-slate-800 fixed w-full z-20 top-0 border-b border-slate-700">
       <div className="max-w-7xl flex items-center justify-between mx-auto p-4">
-        <Link to="/portfolio_website/" className="flex items-center space-x-3 hover:opacity-80 transition-opacity">
+        <Link to="/" className="flex items-center space-x-3 hover:opacity-80 transition-opacity">
           <div className="h-7 w-7 bg-gradient-to-r from-blue-400 to-cyan-400 rounded-lg flex items-center justify-center">
             <span className="text-sm font-bold text-slate-900">EJ</span>
           </div>
@@ -15,7 +15,7 @@ const NavBar: React.FC = () => {
         <ul className="flex flex-row space-x-8">
           <li>
             <Link 
-              to="/portfolio_website/" 
+              to="/" 
               className="text-slate-300 hover:text-blue-400 py-2 px-3 block transition-colors duration-200"
             >
               Home
@@ -23,7 +23,7 @@ const NavBar: React.FC = () => {
           </li>
           <li>
             <Link 
-              to="/portfolio_website/about" 
+              to="/about" 
               className="text-slate-300 hover:text-blue-400 py-2 px-3 block transition-colors duration-200"
             >
               About
@@ -31,7 +31,7 @@ const NavBar: React.FC = () => {
           </li>
           <li>
             <Link 
-              to="/portfolio_website/projects" 
+              to="/projects" 
               className="text-slate-300 hover:text-blue-400 py-2 px-3 block transition-colors duration-200"
             >
               Projects
@@ -39,7 +39,7 @@ const NavBar: React.FC = () => {
           </li>
           <li>
             <Link 
-              to="/portfolio_website/resume" 
+              to="/resume" 
               className="text-slate-300 hover:text-blue-400 py-2 px-3 block transition-colors duration-200"
             >
               Resume
@@ -47,7 +47,7 @@ const NavBar: React.FC = () => {
           </li>
           <li>
             <Link 
-              to="/portfolio_website/contact" 
+              to="/contact" 
               className="text-slate-300 hover:text-blue-400 py-2 px-3 block transition-colors duration-200"
             >
               Contact
