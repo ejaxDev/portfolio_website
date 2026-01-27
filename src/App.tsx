@@ -8,7 +8,7 @@ import ProjectDemo from './pages/ProjectDemo';
 
 const App: React.FC = () => {
   return (
-    <Router>
+    <Router basename="/portfolio_website">
       <NavBar />
       <div className="pt-16">
         <Routes>
