@@ -1,14 +1,14 @@
 import React from "react";
-import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
+import { HashRouter as Router, Routes, Route } from "react-router-dom";
 import NavBar from "./components/layout/NavBar";
-import Home from './pages/Home'
-import About from './pages/About'
-import Projects from './pages/Projects'
-import ProjectDemo from './pages/ProjectDemo'
+import Home from './pages/Home';
+import About from './pages/About';
+import Projects from './pages/Projects';
+import ProjectDemo from './pages/ProjectDemo';
 
 const App: React.FC = () => {
   return (
-    <Router basename="/portfolio_website">
+    <Router>
       <NavBar />
       <div className="pt-16">
         <Routes>
