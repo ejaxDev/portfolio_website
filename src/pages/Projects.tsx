@@ -64,7 +64,7 @@ const Projects: React.FC = () => {
       ],
       image: '💼',
       github: '#',
-      demo: '#',
+      demo: '/',
       highlights: [
         'Responsive design for all devices',
         'Dark theme with modern aesthetics',

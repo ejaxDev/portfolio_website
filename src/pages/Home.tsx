@@ -78,7 +78,7 @@ const Home: React.FC = () => {
                   <span className="px-3 py-1 bg-blue-500/20 text-blue-300 rounded-full text-xs">WebSockets</span>
                 </div>
                 <Link
-                  to="/projects"
+                  to="/projects/project-demo/1"
                   className="inline-block mt-4 text-blue-400 hover:text-blue-300 font-semibold text-sm"
                 >
                   View Project →
@@ -106,7 +106,7 @@ const Home: React.FC = () => {
                   <span className="px-3 py-1 bg-cyan-500/20 text-cyan-300 rounded-full text-xs">Feature Engineering</span>
                 </div>
                 <Link
-                  to="/projects"
+                  to="/projects/project-demo/2"
                   className="inline-block mt-4 text-blue-400 hover:text-blue-300 font-semibold text-sm"
                 >
                   View Project →
