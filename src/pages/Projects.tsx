@@ -211,12 +211,12 @@ const Projects: React.FC = () => {
                       >
                         GitHub
                       </a>
-                      <a
-                        href={project.demo}
+                      <Link
+                        to={project.demo}
                         className="flex-1 px-4 py-2 border-2 border-blue-400 text-blue-400 hover:bg-blue-400 hover:text-slate-900 font-semibold rounded transition-colors text-center text-sm"
                       >
                         View Project
-                      </a>
+                      </Link>
                     </div>
                   </div>
                 </div>

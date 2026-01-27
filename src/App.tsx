@@ -1,5 +1,5 @@
 import React from "react";
-import { HashRouter as Router, Routes, Route } from "react-router-dom";
+import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
 import NavBar from "./components/layout/NavBar";
 import Home from './pages/Home';
 import About from './pages/About';
@@ -15,7 +15,7 @@ const App: React.FC = () => {
           <Route path="/" element={<Home />} />
           <Route path="/about" element={<About />} />
           <Route path="/projects" element={<Projects />} />
-          <Route path="/project-demo/:projectId" element={<ProjectDemo />} />
+          <Route path="/projects/project-demo/:projectId" element={<ProjectDemo />} />
         </Routes>
       </div>
     </Router>
