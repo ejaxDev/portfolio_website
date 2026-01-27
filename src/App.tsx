@@ -5,7 +5,9 @@ import Home from './pages/Home';
 import About from './pages/About';
 import Projects from './pages/Projects';
 import ProjectDemo from './pages/ProjectDemo';
-
+import Contact from './pages/Contact';
+import Resume from './pages/Resume';
+// Add this route in the Routes section:
 const App: React.FC = () => {
   return (
     <Router basename="/portfolio_website">
@@ -16,6 +18,8 @@ const App: React.FC = () => {
           <Route path="/about" element={<About />} />
           <Route path="/projects" element={<Projects />} />
           <Route path="/projects/project-demo/:projectId" element={<ProjectDemo />} />
+          <Route path="/contact" element={<Contact />} />
+          <Route path="/resume" element={<Resume />} />
         </Routes>
       </div>
     </Router>
