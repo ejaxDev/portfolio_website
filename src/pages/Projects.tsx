@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 
 const Projects: React.FC = () => {
   const [selectedCategory, setSelectedCategory] = useState('all');
+  const [expandedHighlights, setExpandedHighlights] = useState<Set<number>>(new Set());
 
   const projects = [
     {
@@ -29,29 +30,54 @@ const Projects: React.FC = () => {
     },
     {
       id: 2,
-      title: 'Algorithmic Trading Bots',
-      category: 'machine-learning',
-      shortDesc: 'Real-time trading system with XGBoost predictions',
-      fullDesc: 'Designed and deployed Python-based algorithmic trading bots on AWS that execute SPY options trades in real-time using WebSocket market data and XGBoost predictions.',
-      technologies: ['Python', 'AWS', 'XGBoost', 'WebSocket', 'Docker'],
+      title: 'Live Trading Framework',
+      category: 'systems-engineering',
+      shortDesc: 'Automated intraday SPY options trading framework',
+      fullDesc: 'Built a live Python trading framework for SPY options with real-time Tastytrade dxFeed WebSocket data streaming, pluggable ML model integration, Alpaca API order execution, and automated daily shutdown at market close.',
+      technologies: ['Python', 'WebSocket', 'Alpaca API', 'Asyncio', 'Docker'],
       metrics: [
-        { label: 'Expected Value', value: '+4%' },
-        { label: 'Platform', value: 'AWS ECS' },
-        { label: 'Data Stream', value: 'Real-time WebSocket' }
+        { label: 'Data Source', value: 'Tastytrade dxFeed' },
+        { label: 'Execution', value: 'Alpaca API' },
+        { label: 'Architecture', value: 'Async/Event-driven' }
       ],
-      image: '🤖',
+      image: '⚙️',
       github: '#',
       demo: 'project-demo/2',
       highlights: [
-        'Live market data integration via WebSocket',
-        'Real-time XGBoost model inference',
-        'Automated execution with risk controls',
-        'Trailing stops and position sizing logic',
-        'Backtested on real market scenarios'
+        'Real-time market data streaming via Tastytrade dxFeed WebSocket',
+        'Pluggable strategy architecture with async event loop',
+        'Alpaca API for automated order execution',
+        'Position tracking with entry/exit prices and P&L',
+        'Daily auto-shutdown at market close',
+        'Configurable timeframes and data requirements'
       ]
     },
     {
       id: 3,
+      title: 'Volatility Breakout Prediction Model',
+      category: 'machine-learning',
+      shortDesc: 'XGBoost model for predicting volatility breakouts in SPY options',
+      fullDesc: 'Built XGBoost binary classification model to predict when price will move 5x the average true range (measured from market open) within 30 minutes. Uses expanding intraday volatility, multi-timeframe ATR windows, VWAP distance metrics, and volume patterns for regime detection.',
+      technologies: ['Python', 'XGBoost', 'Pandas', 'Scikit-learn', 'NumPy'],
+      metrics: [
+        { label: 'ROC-AUC', value: '0.686' },
+        { label: 'Target', value: '5x ATR from Open' },
+        { label: 'Training Data', value: '1 Year' }
+      ],
+      image: '📈',
+      github: '#',
+      demo: 'project-demo/3',
+      highlights: [
+        'Multi-timeframe ATR analysis (5, 30, 60, 120 minute windows)',
+        'VWAP distance metrics with rolling statistics',
+        'Binary classification for volatility breakout prediction',
+        'Parallel label generation for large datasets',
+        'Model calibration analysis with Brier score and log loss',
+        'Feature engineering with interaction terms'
+      ]
+    },
+    {
+      id: 4,
       title: 'Portfolio Website',
       category: 'web-development',
       shortDesc: 'Personal portfolio built with React & Tailwind CSS',
@@ -79,12 +105,25 @@ const Projects: React.FC = () => {
   const categories = [
     { value: 'all', label: 'All Projects' },
     { value: 'machine-learning', label: 'Machine Learning' },
+    { value: 'systems-engineering', label: 'Systems Engineering' },
     { value: 'web-development', label: 'Web Development' }
   ];
 
   const filteredProjects = selectedCategory === 'all' 
     ? projects 
     : projects.filter(p => p.category === selectedCategory);
+
+  const toggleHighlights = (projectId: number) => {
+    setExpandedHighlights(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(projectId)) {
+        newSet.delete(projectId);
+      } else {
+        newSet.add(projectId);
+      }
+      return newSet;
+    });
+  };
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900">
@@ -189,18 +228,26 @@ const Projects: React.FC = () => {
                     <div className="mb-6">
                       <p className="text-slate-400 text-xs font-semibold mb-2">HIGHLIGHTS</p>
                       <ul className="space-y-1">
-                        {project.highlights.slice(0, 3).map((highlight, idx) => (
+                        {(expandedHighlights.has(project.id) 
+                          ? project.highlights 
+                          : project.highlights.slice(0, 3)
+                        ).map((highlight, idx) => (
                           <li key={idx} className="text-slate-300 text-xs flex items-start gap-2">
                             <span className="text-blue-400 mt-1">✓</span>
                             <span>{highlight}</span>
                           </li>
                         ))}
-                        {project.highlights.length > 3 && (
-                          <li className="text-slate-400 text-xs italic">
-                            +{project.highlights.length - 3} more highlights
-                          </li>
-                        )}
                       </ul>
+                      {project.highlights.length > 3 && (
+                        <button
+                          onClick={() => toggleHighlights(project.id)}
+                          className="text-blue-400 hover:text-blue-300 text-xs mt-2 font-medium transition-colors"
+                        >
+                          {expandedHighlights.has(project.id) 
+                            ? '- Show Less' 
+                            : `+ Show ${project.highlights.length - 3} More`}
+                        </button>
+                      )}
                     </div>
 
                     {/* Links */}

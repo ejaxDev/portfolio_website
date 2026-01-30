@@ -1,22 +1,43 @@
 // src/pages/ProjectDemo.tsx
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import CodeBlock from '../components/CodeBlock';
 
 import { PlotData, ProjectDemoData } from "../types/projectDemo"
 import { rushYardProject } from '../projects/rush_yard';
-import { vwapBounceProject } from '../projects/vwap_bounce';
+import { tradingFramework } from '../projects/trading_framework';
+import { volatilityModel } from '../projects/volatility_model';
 
 const ProjectDemo: React.FC = () => {
   const { projectId } = useParams<{ projectId: string }>();
   const [selectedImage, setSelectedImage] = useState<PlotData | null>(null);
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
+  const codeSampleRefs = useRef<{ [key: string]: HTMLDivElement | null }>({});
+  const visualizationsRef = useRef<HTMLDivElement | null>(null);
+
+  const scrollToSection = (label: string) => {
+    let element = codeSampleRefs.current[label];
+    if (label === 'Visualizations & Results') {
+      element = visualizationsRef.current;
+    }
+    if (element) {
+      const offset = 80; // Offset for fixed header if any
+      const elementPosition = element.getBoundingClientRect().top;
+      const offsetPosition = elementPosition + window.pageYOffset - offset;
+
+      window.scrollTo({
+        top: offsetPosition,
+        behavior: 'smooth'
+      });
+    }
+  };
 
   // Project demo data with code samples and plots
   const projectDemos: { [key: string]: ProjectDemoData } = {
     '1': rushYardProject,
-    '2': vwapBounceProject,
-    '3': {
+    '2': tradingFramework,
+    '3': volatilityModel,
+    '4': {
       id: '3',
       title: 'Portfolio Website - Code Demo',
       description: 'Technical implementation of this portfolio',
@@ -152,48 +173,83 @@ export default {
         </div>
       </section>
 
-      {/* Main Content */}
+      {/* Main Content with Sidebar Navigation */}
       <section className="py-20 px-4 sm:px-6 lg:px-8">
-        <div className="max-w-6xl mx-auto">
-          {/* Code Samples Section */}
-          <div className="mb-20">
-            <h2 className="text-4xl font-bold text-white mb-12">Code Samples</h2>
-            {demo.codeSamples.map((sample, idx) => (
-              <CodeBlock
-                key={idx}
-                label={sample.label}
-                description={sample.description}
-                code={sample.code}
-              />
-            ))}
-          </div>
+        <div className="max-w-7xl mx-auto flex flex-col lg:flex-row gap-8">
+          {/* Sticky Sidebar Navigation - Left Side */}
+          {demo.codeSamples && demo.codeSamples.length > 0 && (
+            <div className="lg:w-64 flex-shrink-0">
+              <div className="lg:sticky lg:top-8">
+                <h3 className="text-lg font-semibold text-slate-400 mb-4">Jump to Section:</h3>
+                <div className="flex flex-col gap-2">
+                  {demo.codeSamples.map((sample, idx) => (
+                    <button
+                      key={idx}
+                      onClick={() => scrollToSection(sample.label)}
+                      className="px-4 py-2 bg-blue-500/20 hover:bg-blue-500/30 text-blue-400 rounded-lg border border-blue-500/30 hover:border-blue-400 transition-all font-medium text-left text-sm"
+                    >
+                      {sample.label}
+                    </button>
+                  ))}
+                  {demo.plots && demo.plots.length > 0 && (
+                    <button
+                      onClick={() => scrollToSection('Visualizations & Results')}
+                      className="px-4 py-2 bg-blue-500/20 hover:bg-blue-500/30 text-blue-400 rounded-lg border border-blue-500/30 hover:border-blue-400 transition-all font-medium text-left text-sm"
+                    >
+                      Visualizations & Results
+                    </button>
+                  )}
+                </div>
+              </div>
+            </div>
+          )}
 
-          {/* Plots Section */}
-          <div>
-            <h2 className="text-4xl font-bold text-white mb-12">Visualizations & Results</h2>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-              {demo.plots.map((plot, idx) => (
-                <div
-                  key={idx}
-                  className="bg-slate-700/50 rounded-lg border border-slate-600 overflow-hidden hover:border-blue-400 transition-colors cursor-pointer hover:shadow-lg hover:shadow-blue-500/20"
-                  onClick={() => {
-                    setSelectedImage(plot);
-                    setCurrentImageIndex(0);
-                  }}
+          {/* Main Content Area - Right Side */}
+          <div className="flex-1 min-w-0">
+            {/* Code Samples Section */}
+            <div className="mb-20">
+              <h2 className="text-4xl font-bold text-white mb-12">Code Samples</h2>
+              {demo.codeSamples.map((sample, idx) => (
+                <div 
+                  key={idx} 
+                  ref={(el) => { codeSampleRefs.current[sample.label] = el; }}
                 >
-                  <div className="aspect-video bg-slate-900 flex items-center justify-center hover:bg-slate-800 transition-colors">
-                    <img
-                      src={plot.imageUrl}
-                      alt={plot.title}
-                      className="w-full h-full object-cover"
-                    />
-                  </div>
-                  <div className="p-6">
-                    <h3 className="text-xl font-bold text-white mb-2">{plot.title}</h3>
-                        <div className="text-slate-300">{plot.description}</div>
-                  </div>
+                  <CodeBlock
+                    label={sample.label}
+                    description={sample.description}
+                    code={sample.code}
+                  />
                 </div>
               ))}
+            </div>
+
+            {/* Plots Section */}
+            <div ref={visualizationsRef}>
+              <h2 className="text-4xl font-bold text-white mb-12">Visualizations & Results</h2>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                {demo.plots.map((plot, idx) => (
+                  <div
+                    key={idx}
+                    className="bg-slate-700/50 rounded-lg border border-slate-600 overflow-hidden hover:border-blue-400 transition-colors cursor-pointer hover:shadow-lg hover:shadow-blue-500/20"
+                    onClick={() => {
+                      setSelectedImage(plot);
+                      setCurrentImageIndex(0);
+                    }}
+                  >
+                    <div className="aspect-video bg-slate-900 flex items-center justify-center hover:bg-slate-800 transition-colors">
+                      <img
+                        src={plot.imageUrl}
+                        alt={plot.title}
+                        className="w-full h-full object-cover"
+                      />
+                    </div>
+                    <div className="p-6">
+                      <h3 className="text-xl font-bold text-white mb-2">{plot.title}</h3>
+                          <div className="text-slate-300">{plot.description}</div>
+                    </div>
+                  </div>
+                ))}
+              </div>
             </div>
           </div>
         </div>

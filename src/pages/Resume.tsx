@@ -23,7 +23,7 @@ const Resume: React.FC = () => {
       <div className="bg-slate-900/60 rounded-xl p-6">
         <h3 className="text-3xl font-bold text-blue-400">+4%</h3>
         <p className="text-slate-300 mt-2">
-          Expected value from algorithmic trading strategies using XGBoost and live options data
+          Expected value from ML trading models using XGBoost and live market data
         </p>
       </div>
 
@@ -76,11 +76,21 @@ const Resume: React.FC = () => {
 
         <div>
           <h4 className="text-lg font-semibold text-cyan-400">
-            Algorithmic Trading Bots
+            Live Trading Framework
           </h4>
           <p className="text-slate-300">
-            Deployed live Python trading bots on AWS using WebSocket market data and XGBoost-driven
-            decision logic with automated execution, risk controls, and position sizing.
+            Built automated intraday SPY options trading framework with Tastytrade dxFeed WebSocket for
+            real-time data, pluggable ML model integration, and Alpaca API for order execution.
+          </p>
+        </div>
+
+        <div>
+          <h4 className="text-lg font-semibold text-cyan-400">
+            ML Models for Trading
+          </h4>
+          <p className="text-slate-300">
+            Built XGBoost model to predict when SPY will move 5x the expanding average true range from
+            market open within 30 minutes, using multi-timeframe ATR, VWAP distance, and volume patterns.
           </p>
         </div>
       </div>

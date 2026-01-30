@@ -61,24 +61,24 @@ const Home: React.FC = () => {
             {/* Project 1 */}
             <div className="group bg-slate-700 rounded-lg overflow-hidden hover:bg-slate-600 transition-all duration-300 border border-slate-600 hover:border-blue-400">
               <div className="h-40 sm:h-48 bg-gradient-to-br from-blue-500/20 to-cyan-500/20 flex items-center justify-center">
-                <p className="text-slate-300 font-semibold text-sm sm:text-base">Investment Analytics</p>
+                <p className="text-slate-300 font-semibold text-sm sm:text-base">Live Trading</p>
               </div>
               <div className="p-4 md:p-6 space-y-3">
                 <h3 className="text-lg md:text-xl font-bold text-white">
-                  ML-Driven Options Trading System
+                  Live Trading Framework
                 </h3>
                 <p className="text-slate-300 text-sm">
-                  Built an end-to-end trading system combining XGBoost-based predictive models with
-                  live WebSocket market data, automated execution, and risk management on AWS.
+                  Built a Python-based automated trading framework with real-time Tastytrade dxFeed WebSocket
+                  data streaming, pluggable ML model integration, and Alpaca API order execution.
                 </p>
                 <div className="flex gap-2 flex-wrap pt-2">
                   <span className="px-3 py-1 bg-blue-500/20 text-blue-300 rounded-full text-xs">Python</span>
-                  <span className="px-3 py-1 bg-blue-500/20 text-blue-300 rounded-full text-xs">XGBoost</span>
-                  <span className="px-3 py-1 bg-blue-500/20 text-blue-300 rounded-full text-xs">AWS</span>
+                  <span className="px-3 py-1 bg-blue-500/20 text-blue-300 rounded-full text-xs">Asyncio</span>
                   <span className="px-3 py-1 bg-blue-500/20 text-blue-300 rounded-full text-xs">WebSockets</span>
+                  <span className="px-3 py-1 bg-blue-500/20 text-blue-300 rounded-full text-xs">Alpaca API</span>
                 </div>
                 <Link
-                  to="/projects/project-demo/1"
+                  to="/projects/project-demo/2"
                   className="inline-block mt-4 text-blue-400 hover:text-blue-300 font-semibold text-sm"
                 >
                   View Project →
@@ -106,7 +106,7 @@ const Home: React.FC = () => {
                   <span className="px-3 py-1 bg-cyan-500/20 text-cyan-300 rounded-full text-xs">Feature Engineering</span>
                 </div>
                 <Link
-                  to="/projects/project-demo/2"
+                  to="/projects/project-demo/1"
                   className="inline-block mt-4 text-blue-400 hover:text-blue-300 font-semibold text-sm"
                 >
                   View Project →
