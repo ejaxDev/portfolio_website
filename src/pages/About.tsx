@@ -54,7 +54,7 @@ const About: React.FC = () => {
 
               {/* Social Links */}
               <div className="flex gap-4">
-                <a href="#" className="w-12 h-12 bg-slate-700 hover:bg-blue-500 rounded-lg flex items-center justify-center transition-colors text-white text-sm font-bold">
+                <a href="https://www.linkedin.com/in/eric-jackson27" className="w-12 h-12 bg-slate-700 hover:bg-blue-500 rounded-lg flex items-center justify-center transition-colors text-white text-sm font-bold">
                   in
                 </a>
                 <a href="#" className="w-12 h-12 bg-slate-700 hover:bg-blue-500 rounded-lg flex items-center justify-center transition-colors text-white text-sm font-bold">

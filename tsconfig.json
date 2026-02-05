@@ -10,7 +10,7 @@
     "forceConsistentCasingInFileNames": true,
     "outDir": "./dist",
     "sourceMap": true,
-    "types": ["react", "react-dom"]
+    "types": ["react", "react-dom", "vite/client"]
   },
   "include": ["src/**/*"]
 }

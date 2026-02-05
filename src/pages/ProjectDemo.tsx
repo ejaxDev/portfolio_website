@@ -7,6 +7,8 @@ import { PlotData, ProjectDemoData } from "../types/projectDemo"
 import { rushYardProject } from '../projects/rush_yard';
 import { tradingFramework } from '../projects/trading_framework';
 import { volatilityModel } from '../projects/volatility_model';
+import { optionProfitModel } from '../projects/option_profit_model';
+import { andyXgBoost } from '../projects/andy_XgBoost';
 
 const ProjectDemo: React.FC = () => {
   const { projectId } = useParams<{ projectId: string }>();
@@ -38,7 +40,7 @@ const ProjectDemo: React.FC = () => {
     '2': tradingFramework,
     '3': volatilityModel,
     '4': {
-      id: '3',
+      id: '4',
       title: 'Portfolio Website - Code Demo',
       description: 'Technical implementation of this portfolio',
       codeSamples: [
@@ -117,7 +119,9 @@ export default {
           imageUrl: 'https://via.placeholder.com/600x400?text=Performance+Metrics'
         }
       ]
-    }
+    },
+    '5': optionProfitModel,
+    '6': andyXgBoost
   };
 
   const demo = projectDemos[projectId || ''];

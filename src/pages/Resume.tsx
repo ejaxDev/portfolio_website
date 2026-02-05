@@ -86,7 +86,7 @@ const Resume: React.FC = () => {
 
         <div>
           <h4 className="text-lg font-semibold text-cyan-400">
-            ML Models for Trading
+            5 ATR Volatility Breakout Model
           </h4>
           <p className="text-slate-300">
             Built XGBoost model to predict when SPY will move 5x the expanding average true range from

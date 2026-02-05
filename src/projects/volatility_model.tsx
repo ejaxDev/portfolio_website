@@ -13,29 +13,35 @@ export const volatilityModel: ProjectDemoData = {
       code: `import numpy as np
 import pandas as pd
 
-def calculate_rsi(prices: pd.Series, period: int = 14) -> pd.Series:
+def calculate_rsi(series: pd.Series, period: int = 14) -> pd.Series:
     """
-    Calculate Relative Strength Index (RSI) - momentum oscillator measuring 
-    speed and magnitude of price changes.
-    RSI values range from 0-100, with >70 indicating overbought and <30 
-    indicating oversold conditions.
+    Calculate the Relative Strength Index (RSI).
+    
+    RSI = 100 - (100 / (1 + RS))
+    where RS = Average Gain / Average Loss
     
     Args:
-        prices: Series of closing prices
-        period: Lookback window for RSI calculation (default: 14)
+        series: Price series (typically close prices)
+        period: Lookback period (default: 14)
     
     Returns:
-        Series of RSI values
+        Series with RSI values (0-100)
     """
-    delta = prices.diff()
-    gain = (delta.where(delta > 0, 0)).rolling(
-        window=period, min_periods=period
-    ).mean()
-    loss = (-delta.where(delta < 0, 0)).rolling(
-        window=period, min_periods=period
-    ).mean()
-    rs = gain / loss
+    # Calculate price changes
+    delta = series.diff()
+    
+    # Separate gains and losses
+    gain = delta.where(delta > 0, 0)
+    loss = -delta.where(delta < 0, 0)
+    
+    # Calculate exponential moving average of gains and losses
+    avg_gain = gain.ewm(span=period, adjust=False).mean()
+    avg_loss = loss.ewm(span=period, adjust=False).mean()
+    
+    # Calculate RS and RSI
+    rs = avg_gain / avg_loss
     rsi = 100 - (100 / (1 + rs))
+    
     return rsi
 
 

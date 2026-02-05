@@ -62,6 +62,14 @@ const NavBar: React.FC = () => {
           </li>
           <li>
             <Link 
+              to="/trading" 
+              className="text-slate-300 hover:text-blue-400 py-2 px-3 block transition-colors duration-200"
+            >
+              Trading
+            </Link>
+          </li>
+          <li>
+            <Link 
               to="/resume" 
               className="text-slate-300 hover:text-blue-400 py-2 px-3 block transition-colors duration-200"
             >
@@ -108,6 +116,15 @@ const NavBar: React.FC = () => {
                 onClick={closeMenu}
               >
                 Projects
+              </Link>
+            </li>
+            <li>
+              <Link 
+                to="/trading" 
+                className="text-slate-300 hover:text-blue-400 hover:bg-slate-700 py-3 px-4 block transition-colors duration-200"
+                onClick={closeMenu}
+              >
+                Trading
               </Link>
             </li>
             <li>
