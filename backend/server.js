@@ -57,6 +57,29 @@ app.get('/api/portfolio-history', async (req, res) => {
   try {
     const { period = '1M', timeframe = '1D' } = req.query;
     const history = await alpacaRequest(`/v2/account/portfolio/history?period=${period}&timeframe=${timeframe}`);
+
+    // Append a single latest intraday (minute) point for today to longer periods
+    if (timeframe === '1D' && period !== '1D') {
+      const intraday = await alpacaRequest('/v2/account/portfolio/history?period=1D&timeframe=1Min');
+
+      if (history.timestamp?.length && intraday.timestamp?.length) {
+        const lastDailyTimestamp = history.timestamp[history.timestamp.length - 1];
+
+        // Find the most recent intraday point after the last daily point
+        let lastIdx = -1;
+        for (let i = intraday.timestamp.length - 1; i >= 0; i -= 1) {
+          if (intraday.timestamp[i] > lastDailyTimestamp) {
+            lastIdx = i;
+            break;
+          }
+        }
+
+        if (lastIdx >= 0) {
+          history.timestamp = history.timestamp.concat(intraday.timestamp[lastIdx]);
+          history.equity = history.equity.concat(intraday.equity[lastIdx]);
+        }
+      }
+    }
     
     // Calculate profit_loss and profit_loss_pct as current - start for each point
     if (history.equity && history.equity.length > 0) {

@@ -36,6 +36,7 @@ const Trading: React.FC = () => {
   const [hoveredIndex, setHoveredIndex] = useState<number | null>(null);
   const [tooltipPos, setTooltipPos] = useState<{ x: number; y: number } | null>(null);
   const API_BASE_URL = import.meta.env.VITE_BACKEND_URL || 'portfoliowebsitebackend-production-fa3b.up.railway.app';
+  const historyTimeframe = selectedPeriod === '1D' ? '1Min' : '1D';
   useEffect(() => {
     const fetchAllData = async () => {
       setLoading(true);
@@ -45,7 +46,7 @@ const Trading: React.FC = () => {
         const [accountRes, positionsRes, historyRes] = await Promise.all([
           fetch(`${API_BASE_URL}/api/account`),
           fetch(`${API_BASE_URL}/api/positions`),
-          fetch(`${API_BASE_URL}/api/portfolio-history?period=${selectedPeriod}&timeframe=1D`),
+          fetch(`${API_BASE_URL}/api/portfolio-history?period=${selectedPeriod}&timeframe=${historyTimeframe}`),
         ]);
 
         if (!accountRes.ok || !positionsRes.ok || !historyRes.ok) {
