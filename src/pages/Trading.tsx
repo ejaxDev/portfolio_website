@@ -516,23 +516,55 @@ const Trading: React.FC = () => {
           {portfolioHistory && portfolioHistory.equity && portfolioHistory.equity.length > 0 ? (
             <>
               <div 
-                className="relative bg-slate-900/50 rounded-lg p-4 pt-2"
+                className="relative bg-slate-900/50 rounded-lg p-4 pt-2 flex"
                 onMouseLeave={() => {
                   setHoveredIndex(null);
                   setTooltipPos(null);
                 }}
               >
-                <div className="relative h-48 sm:h-64">
+                {/* Y-axis labels outside plot, left-aligned */}
+                <div className="relative flex flex-col justify-between h-48 sm:h-64 mr-6" style={{ minWidth: '70px' }}>
+                  {(() => {
+                    const min = Math.min(...portfolioHistory.equity);
+                    const max = Math.max(...portfolioHistory.equity);
+                    const range = max - min;
+                    const steps = 5;
+                    const labels = [];
+                    for (let i = steps; i >= 0; i--) {
+                      const value = min + (i * range) / steps;
+                      labels.push(
+                        <div
+                          key={i}
+                          className="text-xs text-slate-400"
+                          style={{
+                            position: 'relative',
+                            top: 0,
+                            marginBottom: i > 0 ? `${((1 / steps) * 100)}%` : 0,
+                            height: 'calc(100% / 6)',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'flex-end',
+                          }}
+                        >
+                          {formatCurrency(value)}
+                        </div>
+                      );
+                    }
+                    return labels;
+                  })()}
+                </div>
+                {/* Chart plot area */}
+                <div className="relative h-48 sm:h-64 w-full">
                   <svg 
                     width="100%" 
                     height="100%" 
                     className="overflow-visible"
+                    style={{ zIndex: 1 }}
                     onMouseMove={(e) => {
                       const svg = e.currentTarget;
                       const rect = svg.getBoundingClientRect();
                       const x = ((e.clientX - rect.left) / rect.width) * 100;
                       const index = Math.round((x / 100) * (portfolioHistory.equity.length - 1));
-                      
                       if (index >= 0 && index < portfolioHistory.equity.length) {
                         setHoveredIndex(index);
                         setTooltipPos({ x: e.clientX - rect.left, y: e.clientY - rect.top });
@@ -547,13 +579,11 @@ const Trading: React.FC = () => {
                     const min = Math.min(...portfolioHistory.equity);
                     const max = Math.max(...portfolioHistory.equity);
                     const range = max - min;
-                    const y1 = range > 0 ? 100 - ((prevValue - min) / range) * 80 - 10 : 50;
-                    const y2 = range > 0 ? 100 - ((value - min) / range) * 80 - 10 : 50;
-                    
+                    const y1 = range > 0 ? ((1 - (prevValue - min) / range) * 80 + 10) : 50;
+                    const y2 = range > 0 ? ((1 - (value - min) / range) * 80 + 10) : 50;
                     const startEquity = portfolioHistory.equity[0];
                     const currentEquity = portfolioHistory.equity[portfolioHistory.equity.length - 1];
                     const isPositive = currentEquity >= startEquity;
-                    
                     return (
                       <line
                         key={index}
@@ -566,65 +596,61 @@ const Trading: React.FC = () => {
                       />
                     );
                   })}
-                </svg>
-                
-                {/* X-axis labels */}
-                <div className="absolute bottom-1 left-0 right-0 flex justify-between px-2 text-xs text-slate-500">
-                  {(() => {
-                    const labels = [];
-                    const totalPoints = portfolioHistory.equity.length;
-                    const step = Math.max(1, Math.ceil(totalPoints / 6)); // Show ~6 labels
-                    
-                    for (let i = 0; i < totalPoints; i += step) {
-                      if (i >= totalPoints) break;
-                      const xPercent = totalPoints > 1 ? (i / (totalPoints - 1)) * 100 : 0;
-                      const isFirst = i === 0;
-                      const isLast = i >= totalPoints - step;
-                      
-                      labels.push(
-                        <div
-                          key={i}
-                          className="absolute text-xs text-slate-500 whitespace-nowrap"
-                          style={{
-                            left: isFirst ? '0' : isLast ? 'auto' : `${xPercent}%`,
-                            right: isLast ? '0' : 'auto',
-                            transform: isFirst ? 'translateX(0)' : isLast ? 'translateX(0)' : 'translateX(-50%)',
-                          }}
-                        >
-                          {showDateTime
-                            ? new Date(portfolioHistory.timestamp[i] * 1000).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })
-                            : new Date(portfolioHistory.timestamp[i] * 1000).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
-                        </div>
-                      );
-                    }
-                    return labels;
-                  })()}
-                </div>
-                </div>
-                
-                {/* Tooltip */}
-                {hoveredIndex !== null && tooltipPos && portfolioHistory.profit_loss_pct && (
-                  <div 
-                    className="absolute bg-slate-900 border border-slate-600 rounded px-3 py-2 text-sm text-white pointer-events-none"
-                    style={{
-                      left: `${tooltipPos.x}px`,
-                      top: `${tooltipPos.y - 60}px`,
-                      transform: 'translateX(-50%)',
-                    }}
-                  >
-                    <div className="text-xs text-slate-400 mb-1">
-                      {showDateTime
-                        ? new Date(portfolioHistory.timestamp[hoveredIndex] * 1000).toLocaleString()
-                        : new Date(portfolioHistory.timestamp[hoveredIndex] * 1000).toLocaleDateString()}
-                    </div>
-                    <div className="font-semibold">
-                      {formatPercent(portfolioHistory.profit_loss_pct[hoveredIndex])}
-                    </div>
-                    <div className="text-xs text-slate-400">
-                      {formatCurrency(portfolioHistory.equity[hoveredIndex])}
-                    </div>
+                  </svg>
+                  {/* X-axis labels */}
+                  <div className="absolute bottom-1 left-0 right-0 flex justify-between px-2 text-xs text-slate-500">
+                    {(() => {
+                      const labels = [];
+                      const totalPoints = portfolioHistory.equity.length;
+                      const step = Math.max(1, Math.ceil(totalPoints / 6)); // Show ~6 labels
+                      for (let i = 0; i < totalPoints; i += step) {
+                        if (i >= totalPoints) break;
+                        const xPercent = totalPoints > 1 ? (i / (totalPoints - 1)) * 100 : 0;
+                        const isFirst = i === 0;
+                        const isLast = i >= totalPoints - step;
+                        labels.push(
+                          <div
+                            key={i}
+                            className="absolute text-xs text-slate-500 whitespace-nowrap"
+                            style={{
+                              left: isFirst ? '0' : isLast ? 'auto' : `${xPercent}%`,
+                              right: isLast ? '0' : 'auto',
+                              transform: isFirst ? 'translateX(0)' : isLast ? 'translateX(0)' : 'translateX(-50%)',
+                            }}
+                          >
+                            {showDateTime
+                              ? new Date(portfolioHistory.timestamp[i] * 1000).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })
+                              : new Date(portfolioHistory.timestamp[i] * 1000).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                          </div>
+                        );
+                      }
+                      return labels;
+                    })()}
                   </div>
-                )}
+                  {/* Tooltip */}
+                  {hoveredIndex !== null && tooltipPos && portfolioHistory.profit_loss_pct && (
+                    <div 
+                      className="absolute bg-slate-900 border border-slate-600 rounded px-3 py-2 text-sm text-white pointer-events-none"
+                      style={{
+                        left: `${tooltipPos.x}px`,
+                        top: `${tooltipPos.y - 60}px`,
+                        transform: 'translateX(-50%)',
+                      }}
+                    >
+                      <div className="text-xs text-slate-400 mb-1">
+                        {showDateTime
+                          ? new Date(portfolioHistory.timestamp[hoveredIndex] * 1000).toLocaleString()
+                          : new Date(portfolioHistory.timestamp[hoveredIndex] * 1000).toLocaleDateString()}
+                      </div>
+                      <div className="font-semibold">
+                        {formatPercent(portfolioHistory.profit_loss_pct[hoveredIndex])}
+                      </div>
+                      <div className="text-xs text-slate-400">
+                        {formatCurrency(portfolioHistory.equity[hoveredIndex])}
+                      </div>
+                    </div>
+                  )}
+                </div>
               </div>
               <div className="flex justify-between text-xs sm:text-sm text-slate-400 mt-6 mb-2 px-2">
                 <span className="truncate">Start: {formatCurrency(hasRange && priorDayEquity !== null ? priorDayEquity : portfolioHistory.equity[0])}</span>
