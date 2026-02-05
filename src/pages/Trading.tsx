@@ -30,6 +30,7 @@ const Trading: React.FC = () => {
   const [account, setAccount] = useState<AccountData | null>(null);
   const [positions, setPositions] = useState<Position[]>([]);
   const [portfolioHistory, setPortfolioHistory] = useState<PortfolioHistory | null>(null);
+  const [priorDayEquity, setPriorDayEquity] = useState<number | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [selectedPeriod, setSelectedPeriod] = useState('1M');
@@ -43,6 +44,7 @@ const Trading: React.FC = () => {
   const [draftMinuteDay, setDraftMinuteDay] = useState('');
   const [hoveredIndex, setHoveredIndex] = useState<number | null>(null);
   const [tooltipPos, setTooltipPos] = useState<{ x: number; y: number } | null>(null);
+  const [navDate, setNavDate] = useState<Date>(new Date());
   const API_BASE_URL = import.meta.env.VITE_BACKEND_URL || 'portfoliowebsitebackend-production-fa3b.up.railway.app';
   const today = new Date();
   const todayStr = today.toISOString().slice(0, 10);
@@ -71,6 +73,7 @@ const Trading: React.FC = () => {
       setLoading(true);
       setError(null);
       setPortfolioHistory(null);
+      setPriorDayEquity(null);
       try {
         const historyParams = new URLSearchParams({
           period: historyPeriod,
@@ -83,11 +86,29 @@ const Trading: React.FC = () => {
           historyParams.set('end', rangeEnd);
         }
 
-        const [accountRes, positionsRes, historyRes] = await Promise.all([
+        const fetchPromises = [
           fetch(`${API_BASE_URL}/api/account`),
           fetch(`${API_BASE_URL}/api/positions`),
           fetch(`${API_BASE_URL}/api/portfolio-history?${historyParams.toString()}`),
-        ]);
+        ];
+
+        // For custom ranges, also fetch prior day's equity
+        let priorDayRes: Response | null = null;
+        if (hasRange) {
+          const priorDate = new Date(rangeStart);
+          priorDate.setDate(priorDate.getDate() - 1);
+          const priorDateStr = priorDate.toISOString().slice(0, 10);
+          const priorDayParams = new URLSearchParams({
+            period: '1D',
+            timeframe: '1D',
+            start: priorDateStr,
+            end: priorDateStr,
+          });
+          fetchPromises.push(fetch(`${API_BASE_URL}/api/portfolio-history?${priorDayParams.toString()}`));
+        }
+
+        const [accountRes, positionsRes, historyRes, ...otherRes] = await Promise.all(fetchPromises);
+        priorDayRes = hasRange ? otherRes[0] : null;
 
         if (!accountRes.ok || !positionsRes.ok || !historyRes.ok) {
           throw new Error('Failed to fetch data from backend');
@@ -97,9 +118,22 @@ const Trading: React.FC = () => {
         const positionsData = await positionsRes.json();
         const historyData = await historyRes.json();
 
+        let priorEquity: number | null = null;
+        if (hasRange && priorDayRes && priorDayRes.ok) {
+          const priorData = await priorDayRes.json();
+          if (priorData.equity && priorData.equity.length > 0) {
+            const lastEquity = priorData.equity[priorData.equity.length - 1];
+            // Only use prior equity if it's not 0
+            if (lastEquity !== 0) {
+              priorEquity = lastEquity;
+            }
+          }
+        }
+
         setAccount(accountData);
         setPositions(positionsData);
         setPortfolioHistory(historyData);
+        setPriorDayEquity(priorEquity);
       } catch (err) {
         setError(err instanceof Error ? err.message : 'An error occurred');
         console.error('Error fetching trading data:', err);
@@ -111,9 +145,94 @@ const Trading: React.FC = () => {
     fetchAllData();
   }, [selectedPeriod, rangeStart, rangeEnd, selectedMinuteDay, historyPeriod, historyTimeframe, isMinuteDay, hasRange, API_BASE_URL]);
 
+  const handleNavigateDay = (direction: 'prev' | 'next') => {
+    const newDate = new Date(navDate);
+    if (direction === 'prev') {
+      newDate.setDate(newDate.getDate() - 1);
+    } else {
+      newDate.setDate(newDate.getDate() + 1);
+    }
+    // Don't go past today
+    if (newDate <= new Date()) {
+      setNavDate(newDate);
+      setSelectedMinuteDay(newDate.toISOString().slice(0, 10));
+      setCustomMode('day');
+      setRangeStart('');
+      setRangeEnd('');
+    }
+  };
+
+  const handleNavigateWeek = (direction: 'prev' | 'next') => {
+    const newDate = new Date(navDate);
+    if (direction === 'prev') {
+      newDate.setDate(newDate.getDate() - 7);
+    } else {
+      newDate.setDate(newDate.getDate() + 7);
+    }
+    // Don't go past today
+    if (newDate <= new Date()) {
+      setNavDate(newDate);
+      const weekStart = new Date(newDate);
+      const weekEnd = new Date(newDate);
+      weekEnd.setDate(weekEnd.getDate() + 6);
+      // Cap weekEnd at today
+      if (weekEnd > new Date()) {
+        weekEnd.setTime(new Date().getTime());
+      }
+      setRangeStart(weekStart.toISOString().slice(0, 10));
+      setRangeEnd(weekEnd.toISOString().slice(0, 10));
+      setCustomMode('range');
+    }
+  };
+
+  const handleNavigateMonth = (direction: 'prev' | 'next') => {
+    const newDate = new Date(navDate);
+    if (direction === 'prev') {
+      newDate.setMonth(newDate.getMonth() - 1);
+    } else {
+      newDate.setMonth(newDate.getMonth() + 1);
+    }
+    // Don't go past today
+    if (newDate <= new Date()) {
+      setNavDate(newDate);
+      const monthStart = new Date(newDate.getFullYear(), newDate.getMonth(), 1);
+      const monthEnd = new Date(newDate.getFullYear(), newDate.getMonth() + 1, 0);
+      // Cap monthEnd at today
+      if (monthEnd > new Date()) {
+        monthEnd.setTime(new Date().getTime());
+      }
+      setRangeStart(monthStart.toISOString().slice(0, 10));
+      setRangeEnd(monthEnd.toISOString().slice(0, 10));
+      setCustomMode('range');
+    }
+  };
+
+  const handleNavigate3Months = (direction: 'prev' | 'next') => {
+    const newDate = new Date(navDate);
+    if (direction === 'prev') {
+      newDate.setMonth(newDate.getMonth() - 3);
+    } else {
+      newDate.setMonth(newDate.getMonth() + 3);
+    }
+    // Don't go past today
+    if (newDate <= new Date()) {
+      setNavDate(newDate);
+      const rangeStart = new Date(newDate.getFullYear(), newDate.getMonth(), 1);
+      const rangeEnd = new Date(newDate.getFullYear(), newDate.getMonth() + 3, 0);
+      // Cap rangeEnd at today
+      if (rangeEnd > new Date()) {
+        rangeEnd.setTime(new Date().getTime());
+      }
+      setRangeStart(rangeStart.toISOString().slice(0, 10));
+      setRangeEnd(rangeEnd.toISOString().slice(0, 10));
+      setCustomMode('range');
+    }
+  };
+
   const calculateReturns = () => {
     if (portfolioHistory && portfolioHistory.equity && portfolioHistory.equity.length > 0) {
-      const startEquity = portfolioHistory.equity[0];
+      // For custom ranges, use prior day equity as starting point if available
+      const startEquity = (hasRange && priorDayEquity !== null) ? priorDayEquity : portfolioHistory.equity[0];
       const endEquity = portfolioHistory.equity[portfolioHistory.equity.length - 1];
       const totalReturn = endEquity - startEquity;
       const totalReturnPct = startEquity > 0 ? (totalReturn / startEquity) * 100 : 0;
@@ -228,25 +347,58 @@ const Trading: React.FC = () => {
           <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
             <h2 className="text-xl sm:text-2xl font-bold text-white">Portfolio Performance</h2>
             <div className="flex gap-1 sm:gap-2 flex-wrap items-center">
-              {['1D', '1W', '1M', '3M', 'ALL'].map((period) => (
-                <button
-                  key={period}
-                  onClick={() => {
-                    setSelectedPeriod(period);
-                    setCustomMode('none');
-                    setSelectedMinuteDay('');
-                    setRangeStart('');
-                    setRangeEnd('');
-                  }}
-                  className={`px-2 sm:px-4 py-1 sm:py-2 rounded-lg font-medium text-xs sm:text-sm transition-colors ${
-                    selectedPeriod === period && customMode === 'none'
-                      ? 'bg-blue-500 text-white'
-                      : 'bg-slate-700 text-slate-300 hover:bg-slate-600'
-                  }`}
-                >
-                  {period}
-                </button>
-              ))}
+              {['1D', '1W', '1M', '3M', 'ALL'].map((period) => {
+                const showNavigation = (period === '1D' || period === '1W' || period === '1M' || period === '3M') && selectedPeriod === period;
+                
+                return (
+                  <div key={period} className="flex items-center gap-1">
+                    {showNavigation && (
+                      <button
+                        onClick={() => {
+                          if (period === '1D') handleNavigateDay('prev');
+                          else if (period === '1W') handleNavigateWeek('prev');
+                          else if (period === '1M') handleNavigateMonth('prev');
+                          else if (period === '3M') handleNavigate3Months('prev');
+                        }}
+                        className="px-2 sm:px-2 py-1 sm:py-2 rounded-lg font-medium text-xs sm:text-sm bg-slate-700 text-slate-300 hover:bg-slate-600 transition-colors"
+                      >
+                        ←
+                      </button>
+                    )}
+                    <button
+                      onClick={() => {
+                        setSelectedPeriod(period);
+                        setCustomMode('none');
+                        setSelectedMinuteDay('');
+                        setRangeStart('');
+                        setRangeEnd('');
+                        setNavDate(new Date());
+                        setPriorDayEquity(null);
+                      }}
+                      className={`px-2 sm:px-4 py-1 sm:py-2 rounded-lg font-medium text-xs sm:text-sm transition-colors ${
+                        selectedPeriod === period && customMode === 'none'
+                          ? 'bg-blue-500 text-white'
+                          : 'bg-slate-700 text-slate-300 hover:bg-slate-600'
+                      }`}
+                    >
+                      {period}
+                    </button>
+                    {showNavigation && (
+                      <button
+                        onClick={() => {
+                          if (period === '1D') handleNavigateDay('next');
+                          else if (period === '1W') handleNavigateWeek('next');
+                          else if (period === '1M') handleNavigateMonth('next');
+                          else if (period === '3M') handleNavigate3Months('next');
+                        }}
+                        className="px-2 sm:px-2 py-1 sm:py-2 rounded-lg font-medium text-xs sm:text-sm bg-slate-700 text-slate-300 hover:bg-slate-600 transition-colors"
+                      >
+                        →
+                      </button>
+                    )}
+                  </div>
+                );
+              })}
               <div className="relative">
                 <button
                   type="button"
@@ -278,6 +430,7 @@ const Trading: React.FC = () => {
                         value={draftMinuteDay}
                         onChange={(e) => setDraftMinuteDay(e.target.value)}
                         max={todayStr}
+                        placeholder="yyyy-mm-dd"
                         className="w-full bg-slate-900/60 text-slate-100 border border-slate-700 rounded-md px-3 py-2 text-sm"
                       />
                       <button
@@ -298,20 +451,22 @@ const Trading: React.FC = () => {
                     </div>
                     <div className="border-t border-slate-800 pt-3 space-y-2">
                       <div className="text-xs uppercase tracking-wide text-slate-400">Custom date range (daily)</div>
-                      <div className="flex gap-2">
+                      <div className="flex gap-2 min-w-0">
                         <input
                           type="date"
                           value={draftRangeStart}
                           onChange={(e) => setDraftRangeStart(e.target.value)}
                           max={tomorrowStr}
-                          className="w-full bg-slate-900/60 text-slate-100 border border-slate-700 rounded-md px-3 py-2 text-sm"
+                          placeholder="yyyy-mm-dd"
+                          className="flex-1 min-w-0 bg-slate-900/60 text-slate-100 border border-slate-700 rounded-md px-3 py-2 text-sm"
                         />
                         <input
                           type="date"
                           value={draftRangeEnd}
                           onChange={(e) => setDraftRangeEnd(e.target.value)}
                           max={tomorrowStr}
-                          className="w-full bg-slate-900/60 text-slate-100 border border-slate-700 rounded-md px-3 py-2 text-sm"
+                          placeholder="yyyy-mm-dd"
+                          className="flex-1 min-w-0 bg-slate-900/60 text-slate-100 border border-slate-700 rounded-md px-3 py-2 text-sm"
                         />
                       </div>
                       <button
@@ -361,28 +516,29 @@ const Trading: React.FC = () => {
           {portfolioHistory && portfolioHistory.equity && portfolioHistory.equity.length > 0 ? (
             <>
               <div 
-                className="relative h-48 sm:h-64 bg-slate-900/50 rounded-lg p-4"
+                className="relative bg-slate-900/50 rounded-lg p-4 pt-2"
                 onMouseLeave={() => {
                   setHoveredIndex(null);
                   setTooltipPos(null);
                 }}
               >
-                <svg 
-                  width="100%" 
-                  height="100%" 
-                  className="overflow-visible"
-                  onMouseMove={(e) => {
-                    const svg = e.currentTarget;
-                    const rect = svg.getBoundingClientRect();
-                    const x = ((e.clientX - rect.left) / rect.width) * 100;
-                    const index = Math.round((x / 100) * (portfolioHistory.equity.length - 1));
-                    
-                    if (index >= 0 && index < portfolioHistory.equity.length) {
-                      setHoveredIndex(index);
-                      setTooltipPos({ x: e.clientX - rect.left, y: e.clientY - rect.top });
-                    }
-                  }}
-                >
+                <div className="relative h-48 sm:h-64">
+                  <svg 
+                    width="100%" 
+                    height="100%" 
+                    className="overflow-visible"
+                    onMouseMove={(e) => {
+                      const svg = e.currentTarget;
+                      const rect = svg.getBoundingClientRect();
+                      const x = ((e.clientX - rect.left) / rect.width) * 100;
+                      const index = Math.round((x / 100) * (portfolioHistory.equity.length - 1));
+                      
+                      if (index >= 0 && index < portfolioHistory.equity.length) {
+                        setHoveredIndex(index);
+                        setTooltipPos({ x: e.clientX - rect.left, y: e.clientY - rect.top });
+                      }
+                    }}
+                  >
                   {portfolioHistory.equity.map((value, index) => {
                     if (index === 0) return null;
                     const prevValue = portfolioHistory.equity[index - 1];
@@ -412,6 +568,40 @@ const Trading: React.FC = () => {
                   })}
                 </svg>
                 
+                {/* X-axis labels */}
+                <div className="absolute bottom-1 left-0 right-0 flex justify-between px-2 text-xs text-slate-500">
+                  {(() => {
+                    const labels = [];
+                    const totalPoints = portfolioHistory.equity.length;
+                    const step = Math.max(1, Math.ceil(totalPoints / 6)); // Show ~6 labels
+                    
+                    for (let i = 0; i < totalPoints; i += step) {
+                      if (i >= totalPoints) break;
+                      const xPercent = totalPoints > 1 ? (i / (totalPoints - 1)) * 100 : 0;
+                      const isFirst = i === 0;
+                      const isLast = i >= totalPoints - step;
+                      
+                      labels.push(
+                        <div
+                          key={i}
+                          className="absolute text-xs text-slate-500 whitespace-nowrap"
+                          style={{
+                            left: isFirst ? '0' : isLast ? 'auto' : `${xPercent}%`,
+                            right: isLast ? '0' : 'auto',
+                            transform: isFirst ? 'translateX(0)' : isLast ? 'translateX(0)' : 'translateX(-50%)',
+                          }}
+                        >
+                          {showDateTime
+                            ? new Date(portfolioHistory.timestamp[i] * 1000).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })
+                            : new Date(portfolioHistory.timestamp[i] * 1000).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                        </div>
+                      );
+                    }
+                    return labels;
+                  })()}
+                </div>
+                </div>
+                
                 {/* Tooltip */}
                 {hoveredIndex !== null && tooltipPos && portfolioHistory.profit_loss_pct && (
                   <div 
@@ -436,11 +626,11 @@ const Trading: React.FC = () => {
                   </div>
                 )}
               </div>
-              <div className="flex justify-between text-xs sm:text-sm text-slate-400 mt-4 mb-2">
-                <span className="truncate">Start: {formatCurrency(portfolioHistory.equity[0])}</span>
+              <div className="flex justify-between text-xs sm:text-sm text-slate-400 mt-6 mb-2 px-2">
+                <span className="truncate">Start: {formatCurrency(hasRange && priorDayEquity !== null ? priorDayEquity : portfolioHistory.equity[0])}</span>
                 <span className="truncate text-right">Current: {formatCurrency(portfolioHistory.equity[portfolioHistory.equity.length - 1])}</span>
               </div>
-              <div className="flex justify-between text-xs text-slate-500 px-4">
+              <div className="flex justify-between text-xs text-slate-500 px-2 hidden">
                 <span>
                   {showDateTime
                     ? new Date(portfolioHistory.timestamp[0] * 1000).toLocaleString()
@@ -452,11 +642,13 @@ const Trading: React.FC = () => {
                     : new Date(portfolioHistory.timestamp[portfolioHistory.timestamp.length - 1] * 1000).toLocaleDateString()}
                 </span>
               </div>
-              <div className="mt-4 p-3 bg-slate-900/30 rounded-lg border border-slate-700 text-xs text-slate-400">
-                {selectedPeriod === 'ALL' && (
-                  <p className="mt-2 text-slate-300">⚠️ <span className="font-semibold">Early Performance:</span> The portfolio experienced a ~20% decline in the first week due to trading bugs.</p>
-                )}
-              </div>
+              {selectedPeriod === 'ALL' && customMode === 'none' && (
+                <div className="mt-4 p-3 bg-yellow-900/40 rounded-lg border border-yellow-700 text-sm flex items-center gap-2">
+                  <span className="text-yellow-400 text-lg">⚠️</span>
+                  <span className="text-yellow-200 font-semibold">Early Performance:</span>
+                  <span className="text-yellow-100">The portfolio experienced a ~20% decline in the first few months due to trading bugs.</span>
+                </div>
+              )}
             </>
           ) : (
             <div className="h-64 flex items-center justify-center text-slate-400">
