@@ -145,7 +145,7 @@ const Trading: React.FC = () => {
           <div className="bg-slate-800/50 backdrop-blur-sm rounded-xl p-3 sm:p-6 border border-slate-700">
             <h3 className="text-slate-400 text-xs sm:text-sm mb-2">Total Return</h3>
             <p className={`text-lg sm:text-3xl font-bold ${totalReturn >= 0 ? 'text-green-400' : 'text-red-400'}`}>
-              {formatCurrency(totalReturn)}W
+              {formatCurrency(totalReturn)}
             </p>
           </div>
           <div className="bg-slate-800/50 backdrop-blur-sm rounded-xl p-3 sm:p-6 border border-slate-700">

@@ -38,6 +38,18 @@ const Home: React.FC = () => {
               </div>
             </div>
 
+            {/* Right Side - Profile Image Area */}
+            <div className="relative h-64 sm:h-80 md:h-96 mt-8 md:mt-0 md:block">
+              <div className="absolute inset-0 bg-gradient-to-r from-blue-500 to-cyan-500 rounded-lg opacity-20 blur-3xl"></div>
+              <div className="relative h-full bg-gradient-to-br from-slate-700 to-slate-800 rounded-lg flex items-center justify-center border border-slate-600 overflow-hidden">
+                <img
+                  src="/portfolio_website/good_boy_pic2.jpeg"
+                  alt="Profile"
+                  className="object-cover w-full h-full rounded-lg"
+                />
+              </div>
+            </div>
+
           </div>
         </div>
       </section>

@@ -1,5 +1,5 @@
 import React from "react";
-import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
+import { BrowserRouter as Router, Routes, Route, Navigate } from "react-router-dom";
 import NavBar from "./components/layout/NavBar";
 import Home from './pages/Home';
 import About from './pages/About';
@@ -22,6 +22,7 @@ const App: React.FC = () => {
           <Route path="/trading" element={<Trading />} />
           <Route path="/contact" element={<Contact />} />
           <Route path="/resume" element={<Resume />} />
+          <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </div>
     </Router>
