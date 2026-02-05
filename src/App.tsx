@@ -11,17 +11,17 @@ import Trading from './pages/Trading';
 // Add this route in the Routes section:
 const App: React.FC = () => {
   return (
-    <Router basename="/">
+    <Router basename="/portfolio_website/">
       <NavBar />
       <div className="pt-16">
         <Routes>
-          <Route path="/" element={<Home />} />
-          <Route path="/about" element={<About />} />
-          <Route path="/projects" element={<Projects />} />
-          <Route path="/projects/project-demo/:projectId" element={<ProjectDemo />} />
-          <Route path="/trading" element={<Trading />} />
-          <Route path="/contact" element={<Contact />} />
-          <Route path="/resume" element={<Resume />} />
+          <Route path="" element={<Home />} />
+          <Route path="about" element={<About />} />
+          <Route path="projects" element={<Projects />} />
+          <Route path="projects/project-demo/:projectId" element={<ProjectDemo />} />
+          <Route path="trading" element={<Trading />} />
+          <Route path="contact" element={<Contact />} />
+          <Route path="resume" element={<Resume />} />
         </Routes>
       </div>
     </Router>

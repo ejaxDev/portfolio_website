@@ -40,6 +40,7 @@ const Trading: React.FC = () => {
     const fetchAllData = async () => {
       setLoading(true);
       setError(null);
+      setPortfolioHistory(null);
       try {
         const [accountRes, positionsRes, historyRes] = await Promise.all([
           fetch(`${API_BASE_URL}/api/account`),
@@ -70,26 +71,28 @@ const Trading: React.FC = () => {
   }, [selectedPeriod, API_BASE_URL]);
 
   const calculateReturns = () => {
-    // NOTE: Portfolio history from Alpaca does NOT include current day data (no EOD data yet)
-    // So chart returns only show historical data
-    // But account returns at the top DO include current day since they use real-time equity values
+    if (!account) return { totalReturn: 0, totalReturnPct: 0 };
     
-    // If we have portfolio history, use start and current from that
+    // For 1D, use yesterday's close (last_equity)
+    if (selectedPeriod === '1D') {
+      const equity = parseFloat(account.equity);
+      const lastEquity = parseFloat(account.last_equity);
+      const totalReturn = equity - lastEquity;
+      const totalReturnPct = ((totalReturn / lastEquity) * 100);
+      return { totalReturn, totalReturnPct };
+    }
+    
+    // For other timeframes, use portfolio history start value
+    const currentEquity = parseFloat(account.equity);
     if (portfolioHistory && portfolioHistory.equity && portfolioHistory.equity.length > 0) {
       const startEquity = portfolioHistory.equity[0];
-      const currentEquity = portfolioHistory.equity[portfolioHistory.equity.length - 1];
       const totalReturn = currentEquity - startEquity;
       const totalReturnPct = ((totalReturn / startEquity) * 100);
       return { totalReturn, totalReturnPct };
     }
     
-    // Fallback to account data if no portfolio history
-    if (!account) return { totalReturn: 0, totalReturnPct: 0 };
-    const equity = parseFloat(account.equity);
-    const lastEquity = parseFloat(account.last_equity);
-    const totalReturn = equity - lastEquity;
-    const totalReturnPct = ((totalReturn / lastEquity) * 100);
-    return { totalReturn, totalReturnPct };
+    // Fallback if no history available
+    return { totalReturn: 0, totalReturnPct: 0 };
   };
 
   const formatCurrency = (value: string | number) => {
