@@ -7,7 +7,7 @@ const Home: React.FC = () => {
       {/* Hero Section */}
       <section className="relative overflow-hidden pt-16 pb-20 px-4 sm:px-6 lg:px-8 md:pt-20 md:pb-32">
         <div className="max-w-7xl mx-auto">
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 md:gap-12 items-center">
+          <div className="grid grid-cols-1 gap-8 md:gap-12 items-center">
             {/* Left Content */}
             <div className="space-y-4 md:space-y-6 z-10">
               <h1 className="text-4xl sm:text-5xl md:text-6xl font-bold text-white leading-tight">
@@ -24,23 +24,17 @@ const Home: React.FC = () => {
                   View My Work
                 </Link>
                 <Link
+                  to="/about"
+                  className="px-6 sm:px-8 py-2 sm:py-3 bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-white font-bold rounded-lg transition-colors text-center shadow-lg shadow-purple-500/50 hover:shadow-purple-600/75"
+                >
+                  Learn About Me
+                </Link>
+                <Link
                   to="/contact"
                   className="px-6 sm:px-8 py-2 sm:py-3 border-2 border-slate-400 hover:border-white text-white font-semibold rounded-lg transition-colors text-center"
                 >
                   Get In Touch
                 </Link>
-              </div>
-            </div>
-
-            {/* Right Side - Profile Image Area */}
-            <div className="relative h-64 sm:h-80 md:h-96 mt-8 md:mt-0 md:block">
-              <div className="absolute inset-0 bg-gradient-to-r from-blue-500 to-cyan-500 rounded-lg opacity-20 blur-3xl"></div>
-              <div className="relative h-full bg-gradient-to-br from-slate-700 to-slate-800 rounded-lg flex items-center justify-center border border-slate-600 overflow-hidden">
-                <img
-                  src="/portfolio_website/good_boy_pic2.jpeg"
-                  alt="Profile"
-                  className="object-cover w-full h-full rounded-lg"
-                />
               </div>
             </div>
 
