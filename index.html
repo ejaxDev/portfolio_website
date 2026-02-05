@@ -4,8 +4,19 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>portfolio_website</title>
-    <script type="module" crossorigin src="/portfolio_website/assets/index-Bkc0N6Rp.js"></script>
-    <link rel="stylesheet" crossorigin href="/portfolio_website/assets/index-BxbAd0gy.css">
+    <script type="text/javascript">
+      (function() {
+        if (window.location.search.includes('p=')) {
+          var path = window.location.search
+            .split('p=')[1]
+            .split('&')[0]
+            .replace(/~and~/g, '&');
+          window.history.replaceState(null, null, path);
+        }
+      })();
+    </script>
+    <script type="module" crossorigin src="/portfolio_website/assets/index-CGKqcSby.js"></script>
+    <link rel="stylesheet" crossorigin href="/portfolio_website/assets/index-CwJLgwJE.css">
   </head>
   <body>
     <div id="root"></div>
