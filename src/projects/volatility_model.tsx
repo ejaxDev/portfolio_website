@@ -1081,12 +1081,12 @@ def init_live_volatility() -> Strategy:
     {
       title: "Feature Importance Analysis",
       description: "XGBoost feature importance ranked by gain. ATR ratios and VWAP interactions dominate predictive power.",
-      imageUrl: "/portfolio_website/featureImportanceVolatilityModel.png"
+      imageUrl: "/featureImportanceVolatilityModel.png"
     },
     {
       title: "Model Calibration Curve",
       description: "Calibration analysis showing model's predicted probabilities vs actual breakout frequencies. Near-perfect calibration indicates reliable probability estimates.",
-      imageUrl: "/portfolio_website/volatility_calibCurve.png"
+      imageUrl: "/volatility_calibCurve.png"
     }
   ]
 }

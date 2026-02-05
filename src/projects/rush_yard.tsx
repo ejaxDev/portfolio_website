@@ -397,7 +397,7 @@ print(f"R²: {r2:.3f}")
           </ul>
         </>
       ),
-      imageUrl: "/portfolio_website/rush_yard_featureImportance.png"
+      imageUrl: "/rush_yard_featureImportance.png"
     },
     {
   title: "Residual Errors of NFL Rushing Yards",
@@ -420,7 +420,7 @@ print(f"R²: {r2:.3f}")
       </p>
     </>
   ),
-  imageUrl: "/portfolio_website/error_NFL.png"
+  imageUrl: "/error_NFL.png"
 }
 ,
     {
@@ -433,12 +433,12 @@ print(f"R²: {r2:.3f}")
       <p className="text-sm text-slate-400 mt-4">Click image to navigate player-specific error distributions →</p>
     </>
   ),
-  imageUrl: "/portfolio_website/bijan_err.png",
+  imageUrl: "/bijan_err.png",
   imageUrls: [
-    { url: "/portfolio_website/bijan_err.png", label: "Bijan Robinson" },
-    { url: "/portfolio_website/henry_error.png", label: "Derrick Henry" },
-    { url: "/portfolio_website/saquon_err.png", label: "Saquon Barkley" },
-    { url: "/portfolio_website/taylor_err.png", label: "Jonathan Taylor" }
+    { url: "/bijan_err.png", label: "Bijan Robinson" },
+    { url: "/henry_error.png", label: "Derrick Henry" },
+    { url: "/saquon_err.png", label: "Saquon Barkley" },
+    { url: "/taylor_err.png", label: "Jonathan Taylor" }
   ]
 }
   ]
