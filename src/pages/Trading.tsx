@@ -35,9 +35,7 @@ const Trading: React.FC = () => {
   const [selectedPeriod, setSelectedPeriod] = useState('1M');
   const [hoveredIndex, setHoveredIndex] = useState<number | null>(null);
   const [tooltipPos, setTooltipPos] = useState<{ x: number; y: number } | null>(null);
-
-  const API_BASE_URL = import.meta.env.VITE_BACKEND_URL || 'http://localhost:3001';
-
+  const API_BASE_URL = import.meta.env.VITE_BACKEND_URL || 'portfoliowebsitebackend-production-fa3b.up.railway.app';
   useEffect(() => {
     const fetchAllData = async () => {
       setLoading(true);
