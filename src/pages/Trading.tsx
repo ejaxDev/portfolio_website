@@ -267,7 +267,6 @@ const Trading: React.FC = () => {
                 <span>{new Date(portfolioHistory.timestamp[portfolioHistory.timestamp.length - 1] * 1000).toLocaleDateString()}</span>
               </div>
               <div className="mt-4 p-3 bg-slate-900/30 rounded-lg border border-slate-700 text-xs text-slate-400">
-                <p>📊 <span className="font-semibold">Note:</span> Chart data does not include the current trading day. The "Total Return" and "Return %" at the top reflect my real-time portfolio value including today's changes.</p>
                 {selectedPeriod === 'ALL' && (
                   <p className="mt-2 text-slate-300">⚠️ <span className="font-semibold">Early Performance:</span> The portfolio experienced a ~20% decline in the first week due to trading bugs.</p>
                 )}
