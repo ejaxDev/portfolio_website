@@ -210,8 +210,13 @@ const Trading: React.FC = () => {
                     const x2 = (index / (portfolioHistory.equity.length - 1)) * 100;
                     const min = Math.min(...portfolioHistory.equity);
                     const max = Math.max(...portfolioHistory.equity);
-                    const y1 = 100 - ((prevValue - min) / (max - min)) * 80 - 10;
-                    const y2 = 100 - ((value - min) / (max - min)) * 80 - 10;
+                    const range = max - min;
+                    const y1 = range > 0 ? 100 - ((prevValue - min) / range) * 80 - 10 : 50;
+                    const y2 = range > 0 ? 100 - ((value - min) / range) * 80 - 10 : 50;
+                    
+                    const startEquity = portfolioHistory.equity[0];
+                    const currentEquity = portfolioHistory.equity[portfolioHistory.equity.length - 1];
+                    const isPositive = currentEquity >= startEquity;
                     
                     return (
                       <line
@@ -220,7 +225,7 @@ const Trading: React.FC = () => {
                         y1={`${y1}%`}
                         x2={`${x2}%`}
                         y2={`${y2}%`}
-                        stroke={value >= portfolioHistory.base_value ? '#4ade80' : '#f87171'}
+                        stroke={isPositive ? '#4ade80' : '#f87171'}
                         strokeWidth="2"
                       />
                     );
@@ -237,6 +242,9 @@ const Trading: React.FC = () => {
                       transform: 'translateX(-50%)',
                     }}
                   >
+                    <div className="text-xs text-slate-400 mb-1">
+                      {new Date(portfolioHistory.timestamp[hoveredIndex] * 1000).toLocaleDateString()}
+                    </div>
                     <div className="font-semibold">
                       {formatPercent(portfolioHistory.profit_loss_pct[hoveredIndex])}
                     </div>
@@ -246,12 +254,19 @@ const Trading: React.FC = () => {
                   </div>
                 )}
               </div>
-              <div className="flex justify-between text-sm text-slate-400 mt-2">
+              <div className="flex justify-between text-sm text-slate-400 mt-4 mb-2">
                 <span>Start: {formatCurrency(portfolioHistory.equity[0])}</span>
                 <span>Current: {formatCurrency(portfolioHistory.equity[portfolioHistory.equity.length - 1])}</span>
               </div>
+              <div className="flex justify-between text-xs text-slate-500 px-4">
+                <span>{new Date(portfolioHistory.timestamp[0] * 1000).toLocaleDateString()}</span>
+                <span>{new Date(portfolioHistory.timestamp[portfolioHistory.timestamp.length - 1] * 1000).toLocaleDateString()}</span>
+              </div>
               <div className="mt-4 p-3 bg-slate-900/30 rounded-lg border border-slate-700 text-xs text-slate-400">
                 <p>📊 <span className="font-semibold">Note:</span> Chart data does not include the current trading day. The "Total Return" and "Return %" at the top reflect my real-time portfolio value including today's changes.</p>
+                {selectedPeriod === 'ALL' && (
+                  <p className="mt-2 text-slate-300">⚠️ <span className="font-semibold">Early Performance:</span> The portfolio experienced a ~20% decline in the first week due to trading bugs.</p>
+                )}
               </div>
             </>
           ) : (
