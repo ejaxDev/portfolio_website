@@ -4,5 +4,10 @@ import react from '@vitejs/plugin-react';
 export default defineConfig({
   base: '/portfolio_website/',
   plugins: [react()],
-  
+  server: {
+    middlewareMode: false,
+  },
+  preview: {
+    middlewareMode: false,
+  },
 });
