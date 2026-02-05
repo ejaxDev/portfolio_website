@@ -55,11 +55,31 @@ app.get('/api/account', async (req, res) => {
 // - When user clicks "1D", the chart will show limited/no data since current day data isn't available
 app.get('/api/portfolio-history', async (req, res) => {
   try {
-    const { period = '1M', timeframe = '1D' } = req.query;
-    const history = await alpacaRequest(`/v2/account/portfolio/history?period=${period}&timeframe=${timeframe}`);
+    const {
+      period = '1M',
+      timeframe = '1D',
+      start,
+      end,
+      day,
+    } = req.query;
+
+    const params = new URLSearchParams();
+    params.set('timeframe', String(timeframe));
+
+    if (day) {
+      params.set('date_start', String(day));
+      params.set('date_end', String(day));
+    } else if (start || end) {
+      if (start) params.set('date_start', String(start));
+      if (end) params.set('date_end', String(end));
+    } else {
+      params.set('period', String(period));
+    }
+
+    const history = await alpacaRequest(`/v2/account/portfolio/history?${params.toString()}`);
 
     // Append a single latest intraday (minute) point for today to longer periods
-    if (timeframe === '1D' && period !== '1D') {
+    if (timeframe === '1D' && period !== '1D' && !day && !start && !end) {
       const intraday = await alpacaRequest('/v2/account/portfolio/history?period=1D&timeframe=1Min');
 
       if (history.timestamp?.length && intraday.timestamp?.length) {

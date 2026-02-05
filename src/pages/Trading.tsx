@@ -33,20 +33,60 @@ const Trading: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [selectedPeriod, setSelectedPeriod] = useState('1M');
+  const [customMode, setCustomMode] = useState<'none' | 'day' | 'range'>('none');
+  const [customMenuOpen, setCustomMenuOpen] = useState(false);
+  const [rangeStart, setRangeStart] = useState('');
+  const [rangeEnd, setRangeEnd] = useState('');
+  const [selectedMinuteDay, setSelectedMinuteDay] = useState('');
+  const [draftRangeStart, setDraftRangeStart] = useState('');
+  const [draftRangeEnd, setDraftRangeEnd] = useState('');
+  const [draftMinuteDay, setDraftMinuteDay] = useState('');
   const [hoveredIndex, setHoveredIndex] = useState<number | null>(null);
   const [tooltipPos, setTooltipPos] = useState<{ x: number; y: number } | null>(null);
   const API_BASE_URL = import.meta.env.VITE_BACKEND_URL || 'portfoliowebsitebackend-production-fa3b.up.railway.app';
-  const historyTimeframe = selectedPeriod === '1D' ? '1Min' : '1D';
+  const today = new Date();
+  const todayStr = today.toISOString().slice(0, 10);
+  const tomorrow = new Date(today);
+  tomorrow.setDate(today.getDate() + 1);
+  const tomorrowStr = tomorrow.toISOString().slice(0, 10);
+  const hasRange = customMode === 'range' && Boolean(rangeStart && rangeEnd);
+  const isMinuteDay = customMode === 'day' && Boolean(selectedMinuteDay);
+  const historyTimeframe = customMode === 'day'
+    ? '1Min'
+    : customMode === 'range'
+      ? '1D'
+      : selectedPeriod === '1D'
+        ? '1Min'
+        : '1D';
+  const historyPeriod = customMode === 'day' ? '1D' : customMode === 'range' ? 'ALL' : selectedPeriod;
+  const showDateTime = historyTimeframe === '1Min';
   useEffect(() => {
+    if (customMode === 'day' && !selectedMinuteDay) {
+      return;
+    }
+    if (customMode === 'range' && !(rangeStart && rangeEnd)) {
+      return;
+    }
     const fetchAllData = async () => {
       setLoading(true);
       setError(null);
       setPortfolioHistory(null);
       try {
+        const historyParams = new URLSearchParams({
+          period: historyPeriod,
+          timeframe: historyTimeframe,
+        });
+        if (isMinuteDay) {
+          historyParams.set('day', selectedMinuteDay);
+        } else if (hasRange) {
+          historyParams.set('start', rangeStart);
+          historyParams.set('end', rangeEnd);
+        }
+
         const [accountRes, positionsRes, historyRes] = await Promise.all([
           fetch(`${API_BASE_URL}/api/account`),
           fetch(`${API_BASE_URL}/api/positions`),
-          fetch(`${API_BASE_URL}/api/portfolio-history?period=${selectedPeriod}&timeframe=${historyTimeframe}`),
+          fetch(`${API_BASE_URL}/api/portfolio-history?${historyParams.toString()}`),
         ]);
 
         if (!accountRes.ok || !positionsRes.ok || !historyRes.ok) {
@@ -69,11 +109,21 @@ const Trading: React.FC = () => {
     };
 
     fetchAllData();
-  }, [selectedPeriod, API_BASE_URL]);
+  }, [selectedPeriod, rangeStart, rangeEnd, selectedMinuteDay, historyPeriod, historyTimeframe, isMinuteDay, hasRange, API_BASE_URL]);
 
   const calculateReturns = () => {
+    if (portfolioHistory && portfolioHistory.equity && portfolioHistory.equity.length > 0) {
+      const startEquity = portfolioHistory.equity[0];
+      const endEquity = portfolioHistory.equity[portfolioHistory.equity.length - 1];
+      const totalReturn = endEquity - startEquity;
+      const totalReturnPct = startEquity > 0 ? (totalReturn / startEquity) * 100 : 0;
+      if (customMode !== 'none') {
+        return { totalReturn, totalReturnPct };
+      }
+    }
+
     if (!account) return { totalReturn: 0, totalReturnPct: 0 };
-    
+
     // For 1D, use yesterday's close (last_equity)
     if (selectedPeriod === '1D') {
       const equity = parseFloat(account.equity);
@@ -82,16 +132,16 @@ const Trading: React.FC = () => {
       const totalReturnPct = ((totalReturn / lastEquity) * 100);
       return { totalReturn, totalReturnPct };
     }
-    
-    // For other timeframes, use portfolio history start value
-    const currentEquity = parseFloat(account.equity);
+
+    // For other timeframes, use portfolio history start value vs current equity
     if (portfolioHistory && portfolioHistory.equity && portfolioHistory.equity.length > 0) {
       const startEquity = portfolioHistory.equity[0];
+      const currentEquity = parseFloat(account.equity);
       const totalReturn = currentEquity - startEquity;
       const totalReturnPct = ((totalReturn / startEquity) * 100);
       return { totalReturn, totalReturnPct };
     }
-    
+
     // Fallback if no history available
     return { totalReturn: 0, totalReturnPct: 0 };
   };
@@ -102,6 +152,13 @@ const Trading: React.FC = () => {
       style: 'currency',
       currency: 'USD',
     }).format(num);
+  };
+
+  const formatCurrencyOrPlaceholder = (value?: string | number | null) => {
+    if (value === null || value === undefined || value === '') {
+      return '—';
+    }
+    return formatCurrency(value);
   };
 
   const formatPercent = (value: string | number) => {
@@ -126,6 +183,12 @@ const Trading: React.FC = () => {
   }
 
   const { totalReturn, totalReturnPct } = calculateReturns();
+  const historyHasEquity = Boolean(portfolioHistory?.equity?.length);
+  const displayPortfolioValue =
+    customMode !== 'none' && historyHasEquity
+      ? portfolioHistory!.equity[portfolioHistory!.equity.length - 1]
+      : account?.equity;
+  const displayCash = customMode !== 'none' ? null : account?.cash;
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 py-16 px-4 sm:px-6 lg:px-8">
@@ -140,11 +203,11 @@ const Trading: React.FC = () => {
         <div className="grid grid-cols-2 md:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-6 mb-8">
           <div className="bg-slate-800/50 backdrop-blur-sm rounded-xl p-3 sm:p-6 border border-slate-700">
             <h3 className="text-slate-400 text-xs sm:text-sm mb-2">Portfolio Value</h3>
-            <p className="text-lg sm:text-3xl font-bold text-white">{account && formatCurrency(account.equity)}</p>
+            <p className="text-lg sm:text-3xl font-bold text-white">{formatCurrencyOrPlaceholder(displayPortfolioValue)}</p>
           </div>
           <div className="bg-slate-800/50 backdrop-blur-sm rounded-xl p-3 sm:p-6 border border-slate-700">
             <h3 className="text-slate-400 text-xs sm:text-sm mb-2">Cash</h3>
-            <p className="text-lg sm:text-3xl font-bold text-white">{account && formatCurrency(account.cash)}</p>
+            <p className="text-lg sm:text-3xl font-bold text-white">{formatCurrencyOrPlaceholder(displayCash)}</p>
           </div>
           <div className="bg-slate-800/50 backdrop-blur-sm rounded-xl p-3 sm:p-6 border border-slate-700">
             <h3 className="text-slate-400 text-xs sm:text-sm mb-2">Total Return</h3>
@@ -164,13 +227,19 @@ const Trading: React.FC = () => {
         <div className="bg-slate-800/50 backdrop-blur-sm rounded-xl p-4 sm:p-6 border border-slate-700 mb-8">
           <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
             <h2 className="text-xl sm:text-2xl font-bold text-white">Portfolio Performance</h2>
-            <div className="flex gap-1 sm:gap-2 flex-wrap">
+            <div className="flex gap-1 sm:gap-2 flex-wrap items-center">
               {['1D', '1W', '1M', '3M', 'ALL'].map((period) => (
                 <button
                   key={period}
-                  onClick={() => setSelectedPeriod(period)}
+                  onClick={() => {
+                    setSelectedPeriod(period);
+                    setCustomMode('none');
+                    setSelectedMinuteDay('');
+                    setRangeStart('');
+                    setRangeEnd('');
+                  }}
                   className={`px-2 sm:px-4 py-1 sm:py-2 rounded-lg font-medium text-xs sm:text-sm transition-colors ${
-                    selectedPeriod === period
+                    selectedPeriod === period && customMode === 'none'
                       ? 'bg-blue-500 text-white'
                       : 'bg-slate-700 text-slate-300 hover:bg-slate-600'
                   }`}
@@ -178,6 +247,113 @@ const Trading: React.FC = () => {
                   {period}
                 </button>
               ))}
+              <div className="relative">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setCustomMenuOpen((open) => {
+                      const next = !open;
+                      if (next) {
+                        setDraftRangeStart(rangeStart);
+                        setDraftRangeEnd(rangeEnd);
+                        setDraftMinuteDay(selectedMinuteDay);
+                      }
+                      return next;
+                    });
+                  }}
+                  className={`px-2 sm:px-4 py-1 sm:py-2 rounded-lg font-medium text-xs sm:text-sm transition-colors ${
+                    customMode !== 'none'
+                      ? 'bg-blue-500 text-white'
+                      : 'bg-slate-700 text-slate-300 hover:bg-slate-600'
+                  }`}
+                >
+                  Custom ▾
+                </button>
+                {customMenuOpen && (
+                  <div className="absolute right-0 mt-2 w-72 bg-slate-900 border border-slate-700 rounded-lg shadow-lg z-10 p-3 space-y-4">
+                    <div className="space-y-2">
+                      <div className="text-xs uppercase tracking-wide text-slate-400">Custom date (minute)</div>
+                      <input
+                        type="date"
+                        value={draftMinuteDay}
+                        onChange={(e) => setDraftMinuteDay(e.target.value)}
+                        max={todayStr}
+                        className="w-full bg-slate-900/60 text-slate-100 border border-slate-700 rounded-md px-3 py-2 text-sm"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => {
+                          if (!draftMinuteDay || draftMinuteDay > todayStr) return;
+                          setCustomMode('day');
+                          setSelectedMinuteDay(draftMinuteDay);
+                          setRangeStart('');
+                          setRangeEnd('');
+                          setCustomMenuOpen(false);
+                        }}
+                        className="w-full text-sm px-3 py-2 rounded-md bg-blue-600 text-white hover:bg-blue-500 disabled:opacity-50"
+                        disabled={!draftMinuteDay || draftMinuteDay > todayStr}
+                      >
+                        Apply custom date
+                      </button>
+                    </div>
+                    <div className="border-t border-slate-800 pt-3 space-y-2">
+                      <div className="text-xs uppercase tracking-wide text-slate-400">Custom date range (daily)</div>
+                      <div className="flex gap-2">
+                        <input
+                          type="date"
+                          value={draftRangeStart}
+                          onChange={(e) => setDraftRangeStart(e.target.value)}
+                          max={tomorrowStr}
+                          className="w-full bg-slate-900/60 text-slate-100 border border-slate-700 rounded-md px-3 py-2 text-sm"
+                        />
+                        <input
+                          type="date"
+                          value={draftRangeEnd}
+                          onChange={(e) => setDraftRangeEnd(e.target.value)}
+                          max={tomorrowStr}
+                          className="w-full bg-slate-900/60 text-slate-100 border border-slate-700 rounded-md px-3 py-2 text-sm"
+                        />
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          if (!(draftRangeStart && draftRangeEnd)) return;
+                          if (draftRangeStart > tomorrowStr || draftRangeEnd > tomorrowStr) return;
+                          setCustomMode('range');
+                          setRangeStart(draftRangeStart);
+                          setRangeEnd(draftRangeEnd);
+                          setSelectedMinuteDay('');
+                          setCustomMenuOpen(false);
+                        }}
+                        className="w-full text-sm px-3 py-2 rounded-md bg-blue-600 text-white hover:bg-blue-500 disabled:opacity-50"
+                        disabled={
+                          !(draftRangeStart && draftRangeEnd) ||
+                          draftRangeStart > tomorrowStr ||
+                          draftRangeEnd > tomorrowStr
+                        }
+                      >
+                        Apply date range
+                      </button>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setCustomMode('none');
+                        setSelectedMinuteDay('');
+                        setRangeStart('');
+                        setRangeEnd('');
+                        setDraftMinuteDay('');
+                        setDraftRangeStart('');
+                        setDraftRangeEnd('');
+                        setCustomMenuOpen(false);
+                      }}
+                      className="w-full text-sm px-3 py-2 rounded-md bg-slate-700 text-slate-200 hover:bg-slate-600"
+                    >
+                      Clear custom
+                    </button>
+                  </div>
+                )}
+              </div>
             </div>
           </div>
           
@@ -247,7 +423,9 @@ const Trading: React.FC = () => {
                     }}
                   >
                     <div className="text-xs text-slate-400 mb-1">
-                      {new Date(portfolioHistory.timestamp[hoveredIndex] * 1000).toLocaleDateString()}
+                      {showDateTime
+                        ? new Date(portfolioHistory.timestamp[hoveredIndex] * 1000).toLocaleString()
+                        : new Date(portfolioHistory.timestamp[hoveredIndex] * 1000).toLocaleDateString()}
                     </div>
                     <div className="font-semibold">
                       {formatPercent(portfolioHistory.profit_loss_pct[hoveredIndex])}
@@ -263,8 +441,16 @@ const Trading: React.FC = () => {
                 <span className="truncate text-right">Current: {formatCurrency(portfolioHistory.equity[portfolioHistory.equity.length - 1])}</span>
               </div>
               <div className="flex justify-between text-xs text-slate-500 px-4">
-                <span>{new Date(portfolioHistory.timestamp[0] * 1000).toLocaleDateString()}</span>
-                <span>{new Date(portfolioHistory.timestamp[portfolioHistory.timestamp.length - 1] * 1000).toLocaleDateString()}</span>
+                <span>
+                  {showDateTime
+                    ? new Date(portfolioHistory.timestamp[0] * 1000).toLocaleString()
+                    : new Date(portfolioHistory.timestamp[0] * 1000).toLocaleDateString()}
+                </span>
+                <span>
+                  {showDateTime
+                    ? new Date(portfolioHistory.timestamp[portfolioHistory.timestamp.length - 1] * 1000).toLocaleString()
+                    : new Date(portfolioHistory.timestamp[portfolioHistory.timestamp.length - 1] * 1000).toLocaleDateString()}
+                </span>
               </div>
               <div className="mt-4 p-3 bg-slate-900/30 rounded-lg border border-slate-700 text-xs text-slate-400">
                 {selectedPeriod === 'ALL' && (
