@@ -7,7 +7,4 @@ export default defineConfig({
   server: {
     middlewareMode: false,
   },
-  preview: {
-    middlewareMode: false,
-  },
 });
