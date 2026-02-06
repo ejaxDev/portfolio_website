@@ -1,3 +1,13 @@
+interface AccountActivity {
+  id: string;
+  activity_type: string;
+  date: string;
+  net_amount: string;
+  symbol?: string;
+  qty?: string;
+  price?: string;
+  description?: string;
+}
 import React, { useEffect, useState } from 'react';
 
 interface AccountData {
@@ -284,6 +294,24 @@ const Trading: React.FC = () => {
     const num = typeof value === 'string' ? parseFloat(value) : value;
     return `${num >= 0 ? '+' : ''}${num.toFixed(2)}%`;
   };
+
+  // Move hooks to top
+  const [activities, setActivities] = useState<AccountActivity[]>([]);
+  const [activitiesLoading, setActivitiesLoading] = useState(false);
+  const [activitiesError, setActivitiesError] = useState<string | null>(null);
+
+  useEffect(() => {
+    setActivitiesLoading(true);
+    setActivitiesError(null);
+    fetch(`${API_BASE_URL}/api/account-activities?page_size=10`)
+      .then(res => {
+        if (!res.ok) throw new Error('Failed to fetch activities');
+        return res.json();
+      })
+      .then(data => setActivities(Array.isArray(data) ? data : []))
+      .catch(err => setActivitiesError(err.message))
+      .finally(() => setActivitiesLoading(false));
+  }, [API_BASE_URL]);
 
   if (loading) {
     return (
@@ -683,6 +711,44 @@ const Trading: React.FC = () => {
           )}
         </div>
 
+        {/* Account Activities */}
+        <div className="bg-slate-800/50 backdrop-blur-sm rounded-xl p-4 sm:p-6 border border-slate-700 mb-8">
+          <h2 className="text-xl sm:text-2xl font-bold text-white mb-6">Account Activities</h2>
+          {activitiesLoading ? (
+            <p className="text-slate-400">Loading activities...</p>
+          ) : activitiesError ? (
+            <p className="text-red-400">Error: {activitiesError}</p>
+          ) : activities.length === 0 ? (
+            <p className="text-slate-400">No activities found.</p>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full">
+                <thead>
+                  <tr className="border-b border-slate-700">
+                    <th className="text-left py-3 px-4 text-slate-400 font-medium">Date</th>
+                    <th className="text-left py-3 px-4 text-slate-400 font-medium">Type</th>
+                    <th className="text-left py-3 px-4 text-slate-400 font-medium">Symbol</th>
+                    <th className="text-right py-3 px-4 text-slate-400 font-medium">Amount</th>
+                    <th className="text-left py-3 px-4 text-slate-400 font-medium">Description</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {activities.map(activity => (
+                    <tr key={activity.id} className="border-b border-slate-700/50">
+                      <td className="py-3 px-4 text-white">{new Date(activity.date).toLocaleString()}</td>
+                      <td className="py-3 px-4 text-slate-300">{activity.activity_type}</td>
+                      <td className="py-3 px-4 text-slate-300">{activity.symbol || '-'}</td>
+                      <td className="py-3 px-4 text-right font-medium {parseFloat(activity.net_amount) >= 0 ? 'text-green-400' : 'text-red-400'}">
+                        {formatCurrency(activity.net_amount)}
+                      </td>
+                      <td className="py-3 px-4 text-slate-300">{activity.description || '-'}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
         {/* Current Positions */}
         <div className="bg-slate-800/50 backdrop-blur-sm rounded-xl p-4 sm:p-6 border border-slate-700">
           <h2 className="text-xl sm:text-2xl font-bold text-white mb-6">Current Positions</h2>

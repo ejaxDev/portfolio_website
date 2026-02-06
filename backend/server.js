@@ -2,6 +2,7 @@ import express from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
 import fetch from 'node-fetch';
+import accountActivitiesRouter from './accountActivities.js';
 
 dotenv.config();
 
@@ -34,6 +35,8 @@ async function alpacaRequest(endpoint) {
 
   return response.json();
 }
+// Account Activities endpoint
+app.use('/api/account-activities', accountActivitiesRouter);
 
 // Get account information
 app.get('/api/account', async (req, res) => {
