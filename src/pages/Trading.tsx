@@ -1,3 +1,47 @@
+// Helper to match buys and sells and calculate profit
+interface MatchedTrade {
+  symbol: string;
+  buyTime: string;
+  sellTime: string;
+  qty: number;
+  buyPrice: number;
+  sellPrice: number;
+  profit: number;
+}
+
+function matchBuysAndSells(activities: AccountActivity[] & { side?: string; price?: string; qty?: string; transaction_time?: string }[]): MatchedTrade[] {
+  // Group by symbol
+  const grouped: { [symbol: string]: typeof activities } = {};
+  activities.forEach(act => {
+    if (!act.symbol) return;
+    if (!grouped[act.symbol]) grouped[act.symbol] = [];
+    grouped[act.symbol].push(act);
+  });
+  const results: MatchedTrade[] = [];
+  Object.entries(grouped).forEach(([symbol, acts]) => {
+    // Only consider fills with side, price, qty, and transaction_time
+    const buys = acts.filter(a => a.side === 'buy' && a.price && a.qty && a.transaction_time).sort((a, b) => new Date(a.transaction_time!).getTime() - new Date(b.transaction_time!).getTime());
+    const sells = acts.filter(a => a.side === 'sell' && a.price && a.qty && a.transaction_time).sort((a, b) => new Date(a.transaction_time!).getTime() - new Date(b.transaction_time!).getTime());
+    while (buys.length && sells.length) {
+      const buy = buys.shift()!;
+      const sell = sells.shift()!;
+      const qty = Math.min(Number(buy.qty), Number(sell.qty));
+      const buyPrice = Number(buy.price);
+      const sellPrice = Number(sell.price);
+      const profit = (sellPrice - buyPrice) * qty;
+      results.push({
+        symbol,
+        buyTime: buy.transaction_time!,
+        sellTime: sell.transaction_time!,
+        qty,
+        buyPrice,
+        sellPrice,
+        profit,
+      });
+    }
+  });
+  return results;
+}
 interface AccountActivity {
   id: string;
   activity_type: string;
@@ -7,6 +51,8 @@ interface AccountActivity {
   qty?: string;
   price?: string;
   description?: string;
+  side?: string; // 'buy' or 'sell'
+  transaction_time?: string;
 }
 import React, { useEffect, useState } from 'react';
 
@@ -711,9 +757,9 @@ const Trading: React.FC = () => {
           )}
         </div>
 
-        {/* Account Activities */}
+        {/* Matched Trades Table */}
         <div className="bg-slate-800/50 backdrop-blur-sm rounded-xl p-4 sm:p-6 border border-slate-700 mb-8">
-          <h2 className="text-xl sm:text-2xl font-bold text-white mb-6">Account Activities</h2>
+          <h2 className="text-xl sm:text-2xl font-bold text-white mb-6">Matched Trades</h2>
           {activitiesLoading ? (
             <p className="text-slate-400">Loading activities...</p>
           ) : activitiesError ? (
@@ -725,36 +771,27 @@ const Trading: React.FC = () => {
               <table className="w-full">
                 <thead>
                   <tr className="border-b border-slate-700">
-                    <th className="text-left py-3 px-4 text-slate-400 font-medium">Date</th>
-                    <th className="text-left py-3 px-4 text-slate-400 font-medium">Type</th>
                     <th className="text-left py-3 px-4 text-slate-400 font-medium">Symbol</th>
-                    <th className="text-right py-3 px-4 text-slate-400 font-medium">Amount</th>
-                    <th className="text-left py-3 px-4 text-slate-400 font-medium">Description</th>
+                    <th className="text-left py-3 px-4 text-slate-400 font-medium">Buy Time</th>
+                    <th className="text-left py-3 px-4 text-slate-400 font-medium">Sell Time</th>
+                    <th className="text-right py-3 px-4 text-slate-400 font-medium">Qty</th>
+                    <th className="text-right py-3 px-4 text-slate-400 font-medium">Buy Price</th>
+                    <th className="text-right py-3 px-4 text-slate-400 font-medium">Sell Price</th>
+                    <th className="text-right py-3 px-4 text-slate-400 font-medium">Profit</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {activities.map(activity => {
-                    // Parse date
-                    const dateObj = new Date(activity.date);
-                    const isValidDate = !isNaN(dateObj.getTime());
-                    const displayDate = isValidDate ? dateObj.toLocaleString() : '—';
-                    // Parse amount
-                    const amountNum = parseFloat(activity.net_amount);
-                    const isValidAmount = !isNaN(amountNum);
-                    const displayAmount = isValidAmount ? formatCurrency(amountNum) : '—';
-                    const amountClass = isValidAmount ? (amountNum >= 0 ? 'text-green-400' : 'text-red-400') : '';
-                    return (
-                      <tr key={activity.id} className="border-b border-slate-700/50">
-                        <td className="py-3 px-4 text-white">{displayDate}</td>
-                        <td className="py-3 px-4 text-slate-300">{activity.activity_type}</td>
-                        <td className="py-3 px-4 text-slate-300">{activity.symbol || '-'}</td>
-                        <td className={`py-3 px-4 text-right font-medium ${amountClass}`}>
-                          {displayAmount}
-                        </td>
-                        <td className="py-3 px-4 text-slate-300">{activity.description || '-'}</td>
-                      </tr>
-                    );
-                  })}
+                  {matchBuysAndSells(activities as any).map((trade, idx) => (
+                    <tr key={trade.symbol + trade.buyTime + trade.sellTime + idx} className="border-b border-slate-700/50">
+                      <td className="py-3 px-4 text-white font-medium">{trade.symbol}</td>
+                      <td className="py-3 px-4 text-slate-300">{new Date(trade.buyTime).toLocaleString()}</td>
+                      <td className="py-3 px-4 text-slate-300">{new Date(trade.sellTime).toLocaleString()}</td>
+                      <td className="py-3 px-4 text-right text-slate-300">{trade.qty}</td>
+                      <td className="py-3 px-4 text-right text-slate-300">{formatCurrency(trade.buyPrice)}</td>
+                      <td className="py-3 px-4 text-right text-slate-300">{formatCurrency(trade.sellPrice)}</td>
+                      <td className={`py-3 px-4 text-right font-medium ${trade.profit >= 0 ? 'text-green-400' : 'text-red-400'}`}>{formatCurrency(trade.profit)}</td>
+                    </tr>
+                  ))}
                 </tbody>
               </table>
             </div>
