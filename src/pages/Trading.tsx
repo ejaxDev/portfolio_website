@@ -349,7 +349,28 @@ const Trading: React.FC = () => {
   useEffect(() => {
     setActivitiesLoading(true);
     setActivitiesError(null);
-    fetch(`${API_BASE_URL}/api/account-activities?page_size=10`)
+    // Build params for the selected period/range
+    const params = new URLSearchParams();
+    params.set('activity_types', 'FILL');
+    params.set('category', 'trade_activity');
+    params.set('direction', 'desc');
+    params.set('page_size', '1000');
+    if (customMode === 'day' && selectedMinuteDay) {
+      params.set('date', selectedMinuteDay);
+    } else if (customMode === 'range' && rangeStart && rangeEnd) {
+      params.set('after', rangeStart);
+      params.set('until', rangeEnd);
+    } else if (selectedPeriod !== 'ALL') {
+      // For 1D, 1W, 1M, 3M, fetch for that period
+      let startDate = new Date();
+      if (selectedPeriod === '1D') startDate.setDate(startDate.getDate() - 1);
+      if (selectedPeriod === '1W') startDate.setDate(startDate.getDate() - 7);
+      if (selectedPeriod === '1M') startDate.setMonth(startDate.getMonth() - 1);
+      if (selectedPeriod === '3M') startDate.setMonth(startDate.getMonth() - 3);
+      params.set('after', startDate.toISOString().slice(0, 10));
+      params.set('until', todayStr);
+    }
+    fetch(`${API_BASE_URL}/api/account-activities?${params.toString()}`)
       .then(res => {
         if (!res.ok) throw new Error('Failed to fetch activities');
         return res.json();
@@ -357,7 +378,7 @@ const Trading: React.FC = () => {
       .then(data => setActivities(Array.isArray(data) ? data : []))
       .catch(err => setActivitiesError(err.message))
       .finally(() => setActivitiesLoading(false));
-  }, [API_BASE_URL]);
+  }, [API_BASE_URL, customMode, selectedMinuteDay, rangeStart, rangeEnd, selectedPeriod, todayStr]);
 
   if (loading) {
     return (
@@ -757,7 +778,7 @@ const Trading: React.FC = () => {
           )}
         </div>
 
-        {/* Matched Trades Table */}
+        {/* Matched Trades Table & Stats */}
         <div className="bg-slate-800/50 backdrop-blur-sm rounded-xl p-4 sm:p-6 border border-slate-700 mb-8">
           <h2 className="text-xl sm:text-2xl font-bold text-white mb-6">Matched Trades</h2>
           {activitiesLoading ? (
@@ -767,34 +788,66 @@ const Trading: React.FC = () => {
           ) : activities.length === 0 ? (
             <p className="text-slate-400">No activities found.</p>
           ) : (
-            <div className="overflow-x-auto">
-              <table className="w-full">
-                <thead>
-                  <tr className="border-b border-slate-700">
-                    <th className="text-left py-3 px-4 text-slate-400 font-medium">Symbol</th>
-                    <th className="text-left py-3 px-4 text-slate-400 font-medium">Buy Time</th>
-                    <th className="text-left py-3 px-4 text-slate-400 font-medium">Sell Time</th>
-                    <th className="text-right py-3 px-4 text-slate-400 font-medium">Qty</th>
-                    <th className="text-right py-3 px-4 text-slate-400 font-medium">Buy Price</th>
-                    <th className="text-right py-3 px-4 text-slate-400 font-medium">Sell Price</th>
-                    <th className="text-right py-3 px-4 text-slate-400 font-medium">Profit</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {matchBuysAndSells(activities as any).map((trade, idx) => (
-                    <tr key={trade.symbol + trade.buyTime + trade.sellTime + idx} className="border-b border-slate-700/50">
-                      <td className="py-3 px-4 text-white font-medium">{trade.symbol}</td>
-                      <td className="py-3 px-4 text-slate-300">{new Date(trade.buyTime).toLocaleString()}</td>
-                      <td className="py-3 px-4 text-slate-300">{new Date(trade.sellTime).toLocaleString()}</td>
-                      <td className="py-3 px-4 text-right text-slate-300">{trade.qty}</td>
-                      <td className="py-3 px-4 text-right text-slate-300">{formatCurrency(trade.buyPrice)}</td>
-                      <td className="py-3 px-4 text-right text-slate-300">{formatCurrency(trade.sellPrice)}</td>
-                      <td className={`py-3 px-4 text-right font-medium ${trade.profit >= 0 ? 'text-green-400' : 'text-red-400'}`}>{formatCurrency(trade.profit)}</td>
+            <>
+              {/* Compute stats */}
+              {(() => {
+                const trades = matchBuysAndSells(activities as any);
+                const wins = trades.filter(t => t.profit > 0);
+                const losses = trades.filter(t => t.profit < 0);
+                const winRate = trades.length ? (wins.length / trades.length) * 100 : 0;
+                const avgWin = wins.length ? wins.reduce((a, b) => a + b.profit, 0) / wins.length : 0;
+                const avgLoss = losses.length ? losses.reduce((a, b) => a + b.profit, 0) / losses.length : 0;
+                const EV = trades.length ? trades.reduce((a, b) => a + b.profit, 0) / trades.length : 0;
+                return (
+                  <div className="mb-6 grid grid-cols-2 md:grid-cols-4 gap-3 sm:gap-6">
+                    <div className="bg-slate-900/60 rounded-lg p-4 border border-slate-700">
+                      <div className="text-slate-400 text-xs mb-1">Win Rate</div>
+                      <div className="text-2xl font-bold text-white">{winRate.toFixed(1)}%</div>
+                    </div>
+                    <div className="bg-slate-900/60 rounded-lg p-4 border border-slate-700">
+                      <div className="text-slate-400 text-xs mb-1">Avg Win</div>
+                      <div className="text-2xl font-bold text-green-400">{formatCurrency(avgWin)}</div>
+                    </div>
+                    <div className="bg-slate-900/60 rounded-lg p-4 border border-slate-700">
+                      <div className="text-slate-400 text-xs mb-1">Avg Loss</div>
+                      <div className="text-2xl font-bold text-red-400">{formatCurrency(avgLoss)}</div>
+                    </div>
+                    <div className="bg-slate-900/60 rounded-lg p-4 border border-slate-700">
+                      <div className="text-slate-400 text-xs mb-1">EV</div>
+                      <div className={`text-2xl font-bold ${EV >= 0 ? 'text-green-400' : 'text-red-400'}`}>{formatCurrency(EV)}</div>
+                    </div>
+                  </div>
+                );
+              })()}
+              <div className="overflow-x-auto">
+                <table className="w-full">
+                  <thead>
+                    <tr className="border-b border-slate-700">
+                      <th className="text-left py-3 px-4 text-slate-400 font-medium">Symbol</th>
+                      <th className="text-left py-3 px-4 text-slate-400 font-medium">Buy Time</th>
+                      <th className="text-left py-3 px-4 text-slate-400 font-medium">Sell Time</th>
+                      <th className="text-right py-3 px-4 text-slate-400 font-medium">Qty</th>
+                      <th className="text-right py-3 px-4 text-slate-400 font-medium">Buy Price</th>
+                      <th className="text-right py-3 px-4 text-slate-400 font-medium">Sell Price</th>
+                      <th className="text-right py-3 px-4 text-slate-400 font-medium">Profit</th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+                  </thead>
+                  <tbody>
+                    {matchBuysAndSells(activities as any).map((trade, idx) => (
+                      <tr key={trade.symbol + trade.buyTime + trade.sellTime + idx} className="border-b border-slate-700/50">
+                        <td className="py-3 px-4 text-white font-medium">{trade.symbol}</td>
+                        <td className="py-3 px-4 text-slate-300">{new Date(trade.buyTime).toLocaleString()}</td>
+                        <td className="py-3 px-4 text-slate-300">{new Date(trade.sellTime).toLocaleString()}</td>
+                        <td className="py-3 px-4 text-right text-slate-300">{trade.qty}</td>
+                        <td className="py-3 px-4 text-right text-slate-300">{formatCurrency(trade.buyPrice)}</td>
+                        <td className="py-3 px-4 text-right text-slate-300">{formatCurrency(trade.sellPrice)}</td>
+                        <td className={`py-3 px-4 text-right font-medium ${trade.profit >= 0 ? 'text-green-400' : 'text-red-400'}`}>{formatCurrency(trade.profit)}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </>
           )}
         </div>
         {/* Current Positions */}
