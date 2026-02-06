@@ -733,17 +733,28 @@ const Trading: React.FC = () => {
                   </tr>
                 </thead>
                 <tbody>
-                  {activities.map(activity => (
-                    <tr key={activity.id} className="border-b border-slate-700/50">
-                      <td className="py-3 px-4 text-white">{new Date(activity.date).toLocaleString()}</td>
-                      <td className="py-3 px-4 text-slate-300">{activity.activity_type}</td>
-                      <td className="py-3 px-4 text-slate-300">{activity.symbol || '-'}</td>
-                      <td className="py-3 px-4 text-right font-medium {parseFloat(activity.net_amount) >= 0 ? 'text-green-400' : 'text-red-400'}">
-                        {formatCurrency(activity.net_amount)}
-                      </td>
-                      <td className="py-3 px-4 text-slate-300">{activity.description || '-'}</td>
-                    </tr>
-                  ))}
+                  {activities.map(activity => {
+                    // Parse date
+                    const dateObj = new Date(activity.date);
+                    const isValidDate = !isNaN(dateObj.getTime());
+                    const displayDate = isValidDate ? dateObj.toLocaleString() : '—';
+                    // Parse amount
+                    const amountNum = parseFloat(activity.net_amount);
+                    const isValidAmount = !isNaN(amountNum);
+                    const displayAmount = isValidAmount ? formatCurrency(amountNum) : '—';
+                    const amountClass = isValidAmount ? (amountNum >= 0 ? 'text-green-400' : 'text-red-400') : '';
+                    return (
+                      <tr key={activity.id} className="border-b border-slate-700/50">
+                        <td className="py-3 px-4 text-white">{displayDate}</td>
+                        <td className="py-3 px-4 text-slate-300">{activity.activity_type}</td>
+                        <td className="py-3 px-4 text-slate-300">{activity.symbol || '-'}</td>
+                        <td className={`py-3 px-4 text-right font-medium ${amountClass}`}>
+                          {displayAmount}
+                        </td>
+                        <td className="py-3 px-4 text-slate-300">{activity.description || '-'}</td>
+                      </tr>
+                    );
+                  })}
                 </tbody>
               </table>
             </div>
