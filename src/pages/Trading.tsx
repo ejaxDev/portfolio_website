@@ -356,7 +356,9 @@ const Trading: React.FC = () => {
     params.set('direction', 'desc');
     params.set('page_size', '1000');
     if (customMode === 'day' && selectedMinuteDay) {
-      params.set('date', selectedMinuteDay);
+      // For single day, use after and until as same day
+      params.set('after', selectedMinuteDay);
+      params.set('until', selectedMinuteDay);
     } else if (customMode === 'range' && rangeStart && rangeEnd) {
       params.set('after', rangeStart);
       params.set('until', rangeEnd);
@@ -780,7 +782,7 @@ const Trading: React.FC = () => {
 
         {/* Matched Trades Table & Stats */}
         <div className="bg-slate-800/50 backdrop-blur-sm rounded-xl p-4 sm:p-6 border border-slate-700 mb-8">
-          <h2 className="text-xl sm:text-2xl font-bold text-white mb-6">Matched Trades</h2>
+          <h2 className="text-xl sm:text-2xl font-bold text-white mb-6">Expected Value</h2>
           {activitiesLoading ? (
             <p className="text-slate-400">Loading activities...</p>
           ) : activitiesError ? (
