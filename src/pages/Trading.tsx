@@ -202,20 +202,24 @@ const Trading: React.FC = () => {
   }, [selectedPeriod, rangeStart, rangeEnd, selectedMinuteDay, historyPeriod, historyTimeframe, isMinuteDay, hasRange, API_BASE_URL]);
 
   const handleNavigateDay = (direction: 'prev' | 'next') => {
-    const newDate = new Date(navDate);
-    if (direction === 'prev') {
-      newDate.setDate(newDate.getDate() - 1);
-    } else {
-      newDate.setDate(newDate.getDate() + 1);
-    }
+    let newDate = new Date(navDate);
+    // Move to next/prev day, skipping weekends
+    do {
+      if (direction === 'prev') {
+        newDate.setDate(newDate.getDate() - 1);
+      } else {
+        newDate.setDate(newDate.getDate() + 1);
+      }
+    } while ((newDate.getUTCDay() === 0 || newDate.getUTCDay() === 6) && newDate <= new Date()); // Skip weekends, but don't go past today
     // Don't go past today
-    if (newDate <= new Date()) {
-      setNavDate(newDate);
-      setSelectedMinuteDay(newDate.toISOString().slice(0, 10));
-      setCustomMode('day');
-      setRangeStart('');
-      setRangeEnd('');
+    if (newDate > new Date()) {
+      return;
     }
+    setNavDate(newDate);
+    setSelectedMinuteDay(newDate.toISOString().slice(0, 10));
+    setCustomMode('day');
+    setRangeStart('');
+    setRangeEnd('');
   };
 
   const handleNavigateWeek = (direction: 'prev' | 'next') => {
@@ -356,9 +360,11 @@ const Trading: React.FC = () => {
     params.set('direction', 'desc');
     params.set('page_size', '100');
     if (customMode === 'day' && selectedMinuteDay) {
-      // For single day, use after and until as same day
+      // For single day, use after=selectedMinuteDay, until=next day
       params.set('after', selectedMinuteDay);
-      params.set('until', selectedMinuteDay);
+      const day = new Date(selectedMinuteDay);
+      day.setDate(day.getDate() + 1);
+      params.set('until', day.toISOString().slice(0, 10));
     } else if (customMode === 'range' && rangeStart && rangeEnd) {
       params.set('after', rangeStart);
       params.set('until', rangeEnd);
