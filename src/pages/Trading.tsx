@@ -791,7 +791,14 @@ const Trading: React.FC = () => {
             <p className="text-slate-400">No activities found.</p>
           ) : (
             (() => {
-              const trades = matchBuysAndSells(activities as any);
+              // Filter trades to only market days (Mon-Fri)
+              function isMarketDay(dateStr: string) {
+                const d = new Date(dateStr);
+                const day = d.getUTCDay();
+                return day >= 1 && day <= 5; // Mon-Fri
+              }
+              const allTrades = matchBuysAndSells(activities as any);
+              const trades = allTrades.filter(t => isMarketDay(t.buyTime) && isMarketDay(t.sellTime));
               const wins = trades.filter(t => t.profit > 0);
               const losses = trades.filter(t => t.profit < 0);
               const winRate = trades.length ? (wins.length / trades.length) * 100 : 0;
