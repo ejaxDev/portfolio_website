@@ -385,7 +385,7 @@ const Trading: React.FC = () => {
       })
       .then(data => setActivities(Array.isArray(data) ? data : []))
       .catch(err => setActivitiesError(err.message))
-      .finally(() => setActivitiesLoading(false));
+      .then(() => setActivitiesLoading(false));
   }, [API_BASE_URL, customMode, selectedMinuteDay, rangeStart, rangeEnd, selectedPeriod, todayStr]);
 
   if (loading) {
