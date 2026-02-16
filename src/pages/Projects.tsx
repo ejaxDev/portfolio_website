@@ -123,31 +123,6 @@ const Projects: React.FC = () => {
         'Production deployment to AWS S3'
       ]
     },
-    {
-      id: 6,
-      title: 'Intraday Direction Classifier',
-      category: 'machine-learning',
-      shortDesc: 'XGBoost model for second-level SPY directional prediction',
-      fullDesc: 'Multi-class XGBoost classifier predicting SPY near-term movement intensity (Heavy Down, Moderate Down, Neutral, Moderate Up, Heavy Up) at 1-second intervals. Features engineered by colleague; I performed feature selection and strategy optimization with multi-threaded backtesting framework.',
-      technologies: ['Python', 'XGBoost', 'Pandas', 'ThreadPoolExecutor'],
-      metrics: [
-        { label: 'Overall Accuracy', value: '60%' },
-        { label: 'Classes', value: '5 (Directional)' },
-        { label: 'Frequency', value: '1-second' }
-      ],
-      image: '🎯',
-      github: '#',
-      demo: 'project-demo/6',
-      highlights: [
-        'Multi-class classifier for intraday momentum (5 classes)',
-        'Feature selection from colleague\'s proprietary indicators',
-        'Options trading strategy with consecutive signal logic',
-        'Multi-threaded backtesting engine for fast validation',
-        'Position management with 10-minute hold duration',
-        'Risk controls with time-based entry/exit cutoffs',
-        'Real-time option pricing from Polygon API'
-      ]
-    },
     
   ];
 

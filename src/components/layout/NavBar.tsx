@@ -62,14 +62,6 @@ const NavBar: React.FC = () => {
           </li>
           <li>
             <Link 
-              to="/trading" 
-              className="text-slate-300 hover:text-blue-400 py-2 px-3 block transition-colors duration-200"
-            >
-              Trading
-            </Link>
-          </li>
-          <li>
-            <Link 
               to="/resume" 
               className="text-slate-300 hover:text-blue-400 py-2 px-3 block transition-colors duration-200"
             >

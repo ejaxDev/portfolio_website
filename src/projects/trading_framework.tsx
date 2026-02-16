@@ -344,195 +344,411 @@ class liveTrader:
           label: 'Web Socket Market Data Handler',
           description: 'Real-time price stream processing',
           code: `        """
-        Connect to Tastytrade dxFeed and stream 1-minute SPY candles.
-        
-        Protocol:
-        1. SETUP - Initialize connection parameters
-        2. AUTH - Authenticate with API token
-        3. CHANNEL_REQUEST - Open feed channel
-        4. FEED_SETUP - Configure data format and fields
-        5. FEED_SUBSCRIPTION - Subscribe to SPY 1-minute candles
-        6. Process incoming candle events
-        
-        Maintains keepalive heartbeat every 25 seconds.
+"""DataStreamer class for market data streaming and aggregation."""
+
+import os
+import time as t
+import asyncio
+import datetime
+import pytz
+import threading
+import traceback
+from typing import List, Callable
+
+import pandas as pd
+import requests
+from massive import WebSocketClient
+from massive.websocket.models import WebSocketMessage, Feed, Market
+from dotenv import load_dotenv
+
+
+class DataStreamer:
+    """
+    Manages real-time market data streaming and aggregation.
+    
+    Handles:
+    - WebSocket connection to Massive (Polygon) for real-time data
+    - Second-level bar aggregation into minute bars
+    - Historical backfilling from Polygon REST API
+    - Data quality validation and gap detection
+    - Multi-subscriber pattern for strategy notifications
+    
+    Architecture:
+    - Runs WebSocket in background thread
+    - Aggregates per-second bars into per-minute bars
+    - Notifies subscribers when minute bars complete
+    - Auto-backfills gaps from REST API
+    """
+    
+    def __init__(self, symbols: list[str], timeframe_seconds: int = 60, update_frequency_seconds: int = None):
         """
-        DXFEED_URL = self.api_quote_token["data"]["dxlink-url"]
-        API_TOKEN = self.api_quote_token["data"]["token"]
-
-        CHANNEL_ID = 1
-        KEEPALIVE_SEC = 25
-        SYMBOL = "SPY{=m}"  # 1-minute candles
-        LOOKBACK_MIN = 0
-
-        url = self.normalize_ws_url(DXFEED_URL)
-
-        async with websockets.connect(url) as ws:
-            # 1) SETUP
-            await ws.send(json.dumps({
-                "type": "SETUP",
-                "channel": 0,
-                "keepaliveTimeout": 60,
-                "acceptKeepaliveTimeout": 60,
-                "version": "1.0.0",
-            }))
-            print(">> SETUP sent")
-
-            for _ in range(3):
-                try:
-                    await asyncio.wait_for(ws.recv(), timeout=1.0)
-                except asyncio.TimeoutError:
-                    break
-
-            # 2) AUTH
-            await ws.send(json.dumps({
-                "type": "AUTH",
-                "channel": 0,
-                "token": API_TOKEN
-            }))
-            print(">> AUTH sent")
-
-            auth_state = await self.wait_for_auth_state(ws)
-            if not auth_state or auth_state.get("state") != "AUTHORIZED":
-                raise RuntimeError(f"Authorization failed: {auth_state}")
-
-            print("<< AUTH_STATE AUTHORIZED")
-
-            # 3) Keepalive
-            ka = asyncio.create_task(self.keepalive_task(ws, KEEPALIVE_SEC))
-
-            # 4) Open FEED channel
-            await ws.send(json.dumps({
-                "type": "CHANNEL_REQUEST",
-                "channel": CHANNEL_ID,
-                "service": "FEED",
-                "parameters": {"contract": "AUTO"},
-            }))
-
-            while True:
-                msg = json.loads(await ws.recv())
-                if msg.get("type") == "CHANNEL_OPENED":
-                    break
-
-            # 5) FEED_SETUP
-            await ws.send(json.dumps({
-                "type": "FEED_SETUP",
-                "channel": CHANNEL_ID,
-                "acceptDataFormat": "FULL",
-                "acceptEventFields": {
-                    "Candle": [
-                        "eventSymbol", "eventType", "time", "sequence",
-                        "open", "high", "low", "close", "volume", "vwap"
-                    ]
-                },
-            }))
-
-            # 6) Subscribe
-            from_time_ms = self.now_ms() - LOOKBACK_MIN * 60_000
-            await ws.send(json.dumps({
-                "type": "FEED_SUBSCRIPTION",
-                "channel": CHANNEL_ID,
-                "add": [{
-                    "symbol": SYMBOL,
-                    "type": "Candle",
-                    "fromTime": from_time_ms
-                }],
-            }))
-
-            print(f">> Subscribed to {SYMBOL}")
-
-            try:
-                # Process incoming candle events
-                while True:
-                    msg = json.loads(await ws.recv())
-
-                    if msg.get("type") != "FEED_DATA":
-                        continue
-
-                    for ev in msg.get("data", []):
-                        if ev.get("eventType") != "Candle":
-                            continue
-
-                        self._handle_candle(ev)
-
-            finally:
-                ka.cancel()
-                with contextlib.suppress(asyncio.CancelledError):
-                    await ka
-        async def keepalive_task(self, ws, period: int) -> None:
-        """
-        Send periodic keepalive messages to WebSocket.
+        Initialize data streamer.
         
         Args:
-            ws: WebSocket connection
-            period: Seconds between keepalive messages
+            symbols: List of symbols to stream (e.g., ["SPY"])
+            timeframe_seconds: Bar aggregation timeframe in seconds (default: 60 for 1-minute bars)
+            update_frequency_seconds: How often to send updates for forming candles (default: same as timeframe)
+                                     Set to 1 for real-time second updates on forming candles
+        """
+        load_dotenv()
+        self.symbols = symbols
+        self.timeframe_seconds = timeframe_seconds
+        self.update_frequency_seconds = update_frequency_seconds or timeframe_seconds
+        self.subscribers = []  # List of async callbacks
+        
+        # Market Data State
+        self.bars_df = pd.DataFrame(columns=[
+            "t_ms", "open", "high", "low", "close", "volume", "vwap", "curr_timestamp"
+        ])
+        self._current_second_bars = {}  # Track second-level bars for aggregation
+        self._last_update_time = {}  # Track last update time for each forming bar
+        self._massive_client = None
+        self._last_api_backfill = None
+        
+    def subscribe(self, callback: Callable):
+        """
+        Register a callback to receive new bars.
+        
+        Args:
+            callback: Async function with signature: async def on_bar(bar: dict)
+        """
+        self.subscribers.append(callback)
+    
+    async def start(self) -> None:
+        """
+        Start streaming market data.
+        
+        Process:
+        1. Wait until next minute boundary
+        2. Start WebSocket in background thread
+        3. Wait 3 minutes for data collection
+        4. Backfill historical data from API
+        5. Monitor for gaps and backfill as needed
+        """
+        # Step 1: Sleep until the next timeframe boundary
+        now = t.time()
+        seconds_into_timeframe = now % self.timeframe_seconds
+        sleep_seconds = self.timeframe_seconds - seconds_into_timeframe
+        print(f"[DATASTREAM] Waiting {sleep_seconds:.1f}s until next {self.timeframe_seconds}s bar...")
+        await asyncio.sleep(sleep_seconds)
+        print(f"[DATASTREAM] New {self.timeframe_seconds}s bar started, starting websocket...")
+        
+        # Step 2: Start websocket in background thread
+        ws_thread = threading.Thread(target=self._run_massive_ws, daemon=True)
+        ws_thread.start()
+        
+        # Step 3: Wait 3 minutes for data collection
+        print("[DATASTREAM] Websocket started. Waiting 3 minutes for data collection...")
+        await asyncio.sleep(180)
+        
+        # Step 4: Backfill historical data
+        print("[DATASTREAM] 3 minutes elapsed. Backfilling historical data...")
+        await self._backfill_from_api()
+        
+        # Step 5: Monitor for gaps
+        print("[DATASTREAM] Entering normal operation mode...")
+        while True:
+            await asyncio.sleep(60)
+            await self._check_and_backfill()
+    
+    def _run_massive_ws(self):
+        """
+        Run Massive WebSocket in background thread.
+        
+        Subscribes to per-second aggregates for all symbols.
         """
         try:
-            while True:
-                await asyncio.sleep(period)
-                await ws.send(json.dumps({"type": "KEEPALIVE", "channel": 0}))
-        except asyncio.CancelledError:
-            pass
+            client = WebSocketClient(
+                api_key=os.getenv("POLYGON_API_KEY", "blah"),
+                feed=Feed.RealTime,
+                market=Market.Stocks
+            )
+            self._massive_client = client
+            
+            # Subscribe to all symbols
+            for symbol in self.symbols:
+                client.subscribe(f"A.{symbol}")
+            
+            def handle_msg(msgs: List[WebSocketMessage]):
+                for m in msgs:
+                    try:
+                        asyncio.run_coroutine_threadsafe(
+                            self._handle_aggregate(m),
+                            asyncio.get_event_loop()
+                        )
+                    except Exception as e:
+                        print(f"[DATASTREAM] Error handling message: {e}")
+            
+            print(f"[DATASTREAM] Subscribed to: {[f'A.{s}' for s in self.symbols]}")
+            client.run(handle_msg)
+        except Exception as e:
+            print(f"[DATASTREAM] WebSocket error: {e}")
     
-    async def wait_for_auth_state(self, ws, timeout: float = 10.0) -> dict | None:
+    async def _handle_aggregate(self, msg: WebSocketMessage) -> None:
         """
-        Wait for AUTH_STATE message from WebSocket.
+        Process incoming per-second aggregate.
+        
+        Accumulates second-level bars into timeframe bars.
+        Notifies subscribers when timeframe bar completes.
         
         Args:
-            ws: WebSocket connection
-            timeout: Maximum seconds to wait
+            msg: WebSocketMessage with aggregate data
+        """
+        try:
+            data = msg if isinstance(msg, dict) else msg.__dict__
+            
+            # Extract timestamp
+            t_ms = data.get('t', data.get('start_timestamp', 0))
+            if t_ms == 0:
+                return
+            
+            bar_key = self._timeframe_start(t_ms)
+            
+            # Skip if bar is in the past
+            current_bar = self._timeframe_start(self._now_ms())
+            if bar_key < current_bar:
+                return
+            
+            # Initialize or update timeframe bar
+            if bar_key not in self._current_second_bars:
+                # Create new bar
+                self._current_second_bars[bar_key] = {
+                    't_ms': bar_key,
+                    'open': data.get('o', data.get('open')),
+                    'high': data.get('h', data.get('high')),
+                    'low': data.get('l', data.get('low')),
+                    'close': data.get('c', data.get('close')),
+                    'volume': data.get('v', data.get('volume', 0)),
+                    'vwap': data.get('vw', data.get('vwap', data.get('c', data.get('close')))),
+                    'curr_timestamp': datetime.datetime.now(),
+                    'count': 1
+                }
+                # Add to DataFrame immediately
+                bar_to_add = self._current_second_bars[bar_key].copy()
+                bar_to_add.pop('count', None)
+                self.bars_df = pd.concat(
+                    [self.bars_df, pd.DataFrame([bar_to_add])],
+                    ignore_index=True
+                ).sort_values('t_ms').reset_index(drop=True)
+            else:
+                # Update existing bar
+                bar = self._current_second_bars[bar_key]
+                bar['high'] = max(bar['high'], data.get('h', data.get('high', 0)))
+                bar['low'] = min(bar['low'], data.get('l', data.get('low', float('inf'))))
+                bar['close'] = data.get('c', data.get('close'))
+                bar['volume'] += data.get('v', data.get('volume', 0))
+                new_vwap = data.get('vw', data.get('vwap', data.get('c', data.get('close'))))
+                bar['vwap'] = (bar['vwap'] * bar['count'] + new_vwap) / (bar['count'] + 1)
+                bar['curr_timestamp'] = datetime.datetime.now()
+                bar['count'] += 1
+                
+                # Update the bar in DataFrame
+                bar_to_update = bar.copy()
+                bar_to_update.pop('count', None)
+                mask = self.bars_df['t_ms'] == bar_key
+                if mask.any():
+                    for col in bar_to_update.keys():
+                        self.bars_df.loc[mask, col] = bar_to_update[col]
+            
+            # Check if we should send an update for the current forming bar
+            now_ms = self._now_ms()
+            current_bar_key = self._timeframe_start(now_ms)
+            
+            if bar_key == current_bar_key:  # This is the current forming bar
+                last_update = self._last_update_time.get(bar_key, 0)
+                time_since_update = (now_ms - last_update) / 1000  # Convert to seconds
+                
+                
+                if time_since_update >= self.update_frequency_seconds:
+                    # Send update for forming bar (not completed yet)
+                    forming_bar = self._current_second_bars[bar_key].copy()
+                    forming_bar.pop('count', None)
+                    forming_bar['forming'] = True  # Flag to indicate this is not a completed bar
+                    await self._on_bar_update(forming_bar)
+                    self._last_update_time[bar_key] = now_ms
+            
+            # Check for completed bars and clean up tracking
+            current_bar = self._timeframe_start(self._now_ms())
+            completed_bars = [k for k in self._current_second_bars.keys() if k < current_bar]
+            
+            for completed_key in completed_bars:
+                completed_bar = self._current_second_bars.pop(completed_key)
+                completed_bar.pop('count', None)
+                completed_bar['forming'] = False
+                # Notify subscribers of completion (bar already in DataFrame)
+                for callback in self.subscribers:
+                    try:
+                        await callback(completed_bar)
+                    except Exception as e:
+                        print(f"[DATASTREAM] Error in subscriber callback: {e}")
+                        print(f"[DATASTREAM] Full traceback:")
+                        traceback.print_exc()
+                # Clean up update tracking
+                self._last_update_time.pop(completed_key, None)
+                
+        except Exception as e:
+            print(f"[DATASTREAM] Error handling aggregate: {e}")
+    
+    async def _on_bar_update(self, bar: dict) -> None:
+        """
+        Handle forming bar update (not yet completed).
+        
+        Notifies subscribers of current state without adding to bars_df.
+        
+        Args:
+            bar: Dict with OHLCV data and 'forming' flag set to True
+        """
+        # Validate bar
+        if pd.isna(bar.get('close')) or pd.isna(bar.get('t_ms')):
+            return
+        
+        # Notify all subscribers of forming bar
+        for callback in self.subscribers:
+            try:
+                await callback(bar)
+            except Exception as e:
+                print(f"[DATASTREAM] Error in subscriber callback (forming): {e}")
+                print(f"[DATASTREAM] Full traceback:")
+                traceback.print_exc()
+    
+    async def _on_bar_complete(self, bar: dict) -> None:
+        """
+        Handle completed timeframe bar.
+        
+        Appends to bars_df and notifies all subscribers.
+        
+        Args:
+            bar: Dict with OHLCV data and 'forming' flag set to False
+        """
+        # Validate bar
+        if pd.isna(bar.get('close')) or pd.isna(bar.get('t_ms')):
+            print(f"[DATASTREAM] Skipping bar with NaN: {bar}")
+            return
+        
+        # Append to bars_df
+        t_ms_val = bar['t_ms']
+        if len(self.bars_df) == 0 or t_ms_val not in self.bars_df['t_ms'].values:
+            self.bars_df = pd.concat(
+                [self.bars_df, pd.DataFrame([bar])],
+                ignore_index=True
+            ).sort_values('t_ms').reset_index(drop=True)
+        
+        # Notify all subscribers
+        for callback in self.subscribers:
+            try:
+                await callback(bar)
+            except Exception as e:
+                print(f"[DATASTREAM] Error in subscriber callback (complete): {e}")
+                print(f"[DATASTREAM] Full traceback:")
+                traceback.print_exc()
+    
+    async def _backfill_from_api(self) -> None:
+        """
+        Backfill historical minute bars from Polygon REST API.
+        
+        Fetches today's data and merges with existing bars.
+        """
+        try:
+            date = datetime.datetime.now(pytz.UTC).strftime('%Y-%m-%d')
+            print(f"[DATASTREAM] Backfilling from API for {date}...")
+            
+            # Only backfill first symbol for now (can extend to multi-symbol)
+            symbol = self.symbols[0]
+            
+            response = requests.get(
+                f'https://api.polygon.io/v2/aggs/ticker/{symbol}/range/1/minute/{date}/{date}',
+                params={
+                    'adjusted': 'true',
+                    'sort': 'asc',
+                    'limit': 50000,
+                    'apiKey': os.getenv("POLYGON_API_KEY", "blah")
+                }
+            )
+            
+            if response.status_code == 200:
+                results = response.json().get('results', [])
+                if results:
+                    new_df = pd.DataFrame(results).rename(columns={
+                        't': 't_ms', 'h': 'high', 'l': 'low',
+                        'o': 'open', 'c': 'close', 'v': 'volume'
+                    })
+                    
+                    if 'vwap' not in new_df.columns:
+                        if 'vw' in new_df.columns:
+                            new_df['vwap'] = new_df['vw']
+                        else:
+                            new_df['vwap'] = new_df['close']
+                    
+                    if len(self.bars_df) > 0:
+                        old_count = len(self.bars_df)
+                        self.bars_df = pd.concat([self.bars_df, new_df]).drop_duplicates(
+                            subset=['t_ms'], keep='last'
+                        ).sort_values('t_ms').reset_index(drop=True)
+                        print(f"[DATASTREAM] Added {len(self.bars_df) - old_count} bars. Total: {len(self.bars_df)}")
+                    else:
+                        self.bars_df = new_df
+                        print(f"[DATASTREAM] Initialized with {len(new_df)} bars")
+                    
+                    self._last_api_backfill = datetime.datetime.now()
+                else:
+                    print(f"[DATASTREAM] No results from API")
+            else:
+                print(f"[DATASTREAM] API error: {response.status_code}")
+                
+        except Exception as e:
+            print(f"[DATASTREAM] Backfill error: {e}")
+    
+    async def _check_and_backfill(self) -> None:
+        """
+        Check if data is current and backfill if stale.
+        
+        If data is >70 seconds behind, waits 3 minutes then backfills.
+        """
+        try:
+            if len(self.bars_df) == 0:
+                print("[DATASTREAM] No data yet, backfilling...")
+                await asyncio.sleep(180)
+                await self._backfill_from_api()
+                return
+            
+            latest_t_ms = self.bars_df['t_ms'].max()
+            latest_dt = datetime.datetime.fromtimestamp(latest_t_ms / 1000, pytz.UTC)
+            now_utc = datetime.datetime.now(pytz.UTC)
+            
+            time_behind_seconds = (now_utc - latest_dt).total_seconds()
+            
+            if time_behind_seconds > 70:
+                print(f"[DATASTREAM] Data stale: {time_behind_seconds/60:.1f} min behind")
+                await asyncio.sleep(180)
+                await self._backfill_from_api()
+                
+        except Exception as e:
+            print(f"[DATASTREAM] Error checking completeness: {e}")
+    
+    def get_bars(self, symbol: str = None, count: int = None) -> pd.DataFrame:
+        """
+        Get recent bars.
+        
+        Args:
+            symbol: Symbol to filter (currently only supports first symbol)
+            count: Number of recent bars to return
         
         Returns:
-            AUTH_STATE message dict or None if timeout
+            DataFrame with OHLCV bars
         """
-        deadline = t.time() + timeout
-        while t.time() < deadline:
-            try:
-                msg = json.loads(await asyncio.wait_for(ws.recv(), timeout=1.0))
-                if msg.get("type") == "AUTH_STATE":
-                    return msg
-            except asyncio.TimeoutError:
-                continue
-        return None
+        df = self.bars_df.copy()
+        if count:
+            df = df.tail(count)
+        return df
     
-    def _handle_candle(self, ev: dict) -> None:
-        """
-        Process incoming candle event and update bars_df.
-        
-        Args:
-            ev: Candle event dict from dxFeed
-        
-        Logic:
-        - Tracks current minute key
-        - Updates _latest_ev with highest sequence number
-        - Appends to bars_df when minute closes
-        - Trims bars_df if exceeds 500 rows (safety)
-        """
-        t_ms = float(ev["time"])
-        key = self.minute_start(t_ms)
-
-        # Safety: prevent runaway memory growth
-        if len(self.bars_df) > 500:
-            print(f"bars_df unexpectedly large ({len(self.bars_df)} rows), trimming oldest data")
-            self.bars_df = self.bars_df.tail(390).reset_index(drop=True)
-
-        if self._current_minute_key is None:
-            self._current_minute_key = key
-            self._latest_ev = ev
-            return
-
-        if key == self._current_minute_key:
-            # Update if higher sequence number
-            if float(ev.get("sequence", 0)) >= float(self._latest_ev.get("sequence", 0)):
-                self._latest_ev = ev
-        else:
-            # Minute closed, save bar
-            closed = self._to_row(self._latest_ev) #        Convert dxFeed candle event to DataFrame row.
-            self.bars_df.loc[len(self.bars_df)] = closed
-
-            self._current_minute_key = key
-            self._latest_ev = ev
-
-`
+    def _timeframe_start(self, ms: int) -> int:
+        """Round timestamp down to timeframe boundary."""
+        timeframe_ms = self.timeframe_seconds * 1000
+        return ms - (ms % timeframe_ms)
+    
+    def _now_ms(self) -> float:
+        """Get current time in milliseconds."""
+        return float(t.time() * 1000)`
         },
         {
           label: 'Order Execution Engine',
@@ -608,7 +824,6 @@ class liveTrader:
             ignore_index=True
         )
         
-        print('we are on bar now')
         
         # Generate features and check entry
         self.strategy.set_signal_df(self.bars_df)
