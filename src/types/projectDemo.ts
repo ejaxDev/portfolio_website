@@ -22,6 +22,6 @@ export interface ProjectDemoData {
   title: string
   description: string
   codeSamples: CodeSample[]
-  plots: PlotData[]
+  plots?: PlotData[]
 }
 

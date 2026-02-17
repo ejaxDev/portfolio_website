@@ -11,21 +11,23 @@ const Projects: React.FC = () => {
       title: 'Sports Analytics Predictions',
       category: 'machine-learning',
       shortDesc: 'NFL rushing yards prediction using XGBoost',
-      fullDesc: 'Built an end-to-end machine learning pipeline to predict NFL rushing yards using historical game data. The model engineers rolling workload, efficiency, and matchup features to achieve competitive predictive performance.',
+      fullDesc: 'Built an end-to-end XGBoost pipeline to predict NFL rushing yards with multi-dimensional feature engineering across player performance, defensive matchups, team context, workload competition, and injury impact modeling.',
       technologies: ['Python', 'XGBoost', 'Pandas', 'Scikit-learn'],
       metrics: [
-        { label: 'RMSE', value: '27.8 yards' },
-        { label: 'R² Score', value: '0.46' },
-        { label: 'Classification ROC-AUC', value: '0.626' }
+        { label: 'RMSE', value: '28.44 yards' },
+        { label: 'R² Score', value: '0.39' },
+        { label: 'Time Period', value: '2019-2023' }
       ],
       image: '📊',
       github: '#',
       demo: 'project-demo/1',
       highlights: [
-        'Feature engineering from historical game data',
-        'Out-of-sample validation on full season',
-        'Classification model for over/under predictions',
-        'Actionable insights for sports analytics'
+        '10 modular code sections covering full ML pipeline + betting strategy',
+        'Multi-dimensional feature engineering (player, defense, game script)',
+        'Strength-of-schedule adjusted defensive metrics',
+        'Workload competition and injury impact modeling',
+        'Permutation importance feature selection (removed noise features)',
+        'Binary classifier for over/under betting with edge detection'
       ]
     },
     {
@@ -33,10 +35,10 @@ const Projects: React.FC = () => {
       title: 'Live Trading Framework',
       category: 'systems-engineering',
       shortDesc: 'Automated intraday SPY options trading framework',
-      fullDesc: 'Built a live Python trading framework for SPY options with real-time Tastytrade dxFeed WebSocket data streaming, pluggable ML model integration, Alpaca API order execution, and automated daily shutdown at market close.',
+      fullDesc: 'Built a live Python trading framework for SPY options with real-time Massive WebSocket (Polygon) data streaming for SPY, Tastytrade API for options pricing, pluggable ML model integration, Alpaca API order execution, and automated daily shutdown at market close.',
       technologies: ['Python', 'WebSocket', 'Alpaca API', 'Asyncio', 'Docker'],
       metrics: [
-        { label: 'Data Source', value: 'Tastytrade dxFeed' },
+        { label: 'Data Source', value: 'Massive (Polygon)' },
         { label: 'Execution', value: 'Alpaca API' },
         { label: 'Architecture', value: 'Async/Event-driven' }
       ],
@@ -44,20 +46,20 @@ const Projects: React.FC = () => {
       github: '#',
       demo: 'project-demo/2',
       highlights: [
-        'Real-time market data streaming via Tastytrade dxFeed WebSocket',
-        'Pluggable strategy architecture with async event loop',
-        'Alpaca API for automated order execution',
-        'Position tracking with entry/exit prices and P&L',
-        'Daily auto-shutdown at market close',
-        'Configurable timeframes and data requirements'
+        '11 modular code sections for easy navigation',
+        'Real-time Massive WebSocket for SPY data streaming (Polygon)',
+        'Async event loop with concurrent task management',
+        'Pluggable strategy architecture with ML model support',
+        'Tastytrade API for options chain data and pricing',
+        'Alpaca API for order execution with position tracking'
       ]
     },
     {
       id: 3,
       title: 'Volatility Breakout Prediction Model',
       category: 'machine-learning',
-      shortDesc: 'XGBoost model for predicting volatility breakouts in SPY options',
-      fullDesc: 'Built XGBoost binary classification model to predict when price will move 5x the average true range (measured from market open) within 30 minutes. Uses expanding intraday volatility, multi-timeframe ATR windows, VWAP distance metrics, and volume patterns for regime detection.',
+      shortDesc: 'Predicts big SPY moves in either direction for options straddle strategy',
+      fullDesc: 'Model predicts when SPY will make a significant move in EITHER direction within 30 minutes. Trading strategy: buy both call AND put options, hold for 30 minutes, profit from the swing regardless of direction. Uses multi-timeframe volatility analysis and price deviation patterns to detect upcoming breakouts.',
       technologies: ['Python', 'XGBoost', 'Pandas', 'Scikit-learn', 'NumPy'],
       metrics: [
         { label: 'ROC-AUC', value: '0.686' },
@@ -68,12 +70,12 @@ const Projects: React.FC = () => {
       github: '#',
       demo: 'project-demo/3',
       highlights: [
+        '11 modular code sections covering full ML pipeline',
         'Multi-timeframe ATR analysis (5, 30, 60, 120 minute windows)',
         'VWAP distance metrics with rolling statistics',
-        'Binary classification for volatility breakout prediction',
-        'Parallel label generation for large datasets',
-        'Model calibration analysis with Brier score and log loss',
-        'Feature engineering with interaction terms'
+        'Parallel label generation with ThreadPoolExecutor (8 workers)',
+        'Time-series cross-validation with expanding window',
+        'Feature engineering with interaction terms (time × volume, VWAP × ATR)'
       ]
     },
     {
@@ -90,7 +92,7 @@ const Projects: React.FC = () => {
       ],
       image: '💼',
       github: '#',
-      demo: '/',
+      demo: 'project-demo/4',
       highlights: [
         'Responsive design for all devices',
         'Dark theme with modern aesthetics',
@@ -104,23 +106,23 @@ const Projects: React.FC = () => {
       title: 'Options Profit Prediction Model',
       category: 'machine-learning',
       shortDesc: 'XGBoost model predicting profitable SPY options trades',
-      fullDesc: 'Built binary classifier with 100+ engineered features to predict end-of-day profitability for SPY options. Includes SHAP-driven interaction features, intraday positioning metrics, and EV analysis by strike/threshold. Deployed to AWS S3 for production inference.',
-      technologies: ['Python', 'XGBoost', 'SHAP', 'AWS S3', 'Pandas'],
+      fullDesc: 'Predicts if buying a SPY option NOW will be profitable by 3:30pm. Strategy: scan all strikes throughout the day, buy when model shows high confidence, sell at 3:30pm. Uses rolling price statistics (5min to 2hr windows) to detect patterns that lead to profitable end-of-day positions.',
+      technologies: ['Python', 'XGBoost', 'Polygon API', 'ThreadPoolExecutor', 'Pandas'],
       metrics: [
-        { label: 'Features', value: '100+' },
-        { label: 'Target', value: 'EOD Profit' },
-        { label: 'Deployment', value: 'AWS S3' }
+        { label: 'Sections', value: '11' },
+        { label: 'Target', value: '3:30pm Profit' },
+        { label: 'Windows', value: '6 Timeframes' }
       ],
       image: '💰',
       github: '#',
       demo: 'project-demo/5',
       highlights: [
-        '100+ engineered features across price, volume, and microstructure',
-        'SHAP analysis for feature discovery and interaction terms',
-        'Intraday positioning features (distance from day high/low)',
-        'Expected value analysis by OTM strike and confidence threshold',
-        'Statistical validation with paired t-tests',
-        'Production deployment to AWS S3'
+        '11 modular sections: data fetching → features → labeling → training → calibration → deployment',
+        'Parallel data fetching with ThreadPoolExecutor for thousands of option contracts',
+        'Multi-window features across 6 timeframes (5min, 10min, 15min, 30min, 60min, 120min)',
+        'Walk-forward validation - train on past years, test on future (no peeking)',
+        'Calibration analysis to verify predicted probabilities match reality',
+        'Outlier detection strategy: find unusually high-confidence predictions vs historical distribution'
       ]
     },
     

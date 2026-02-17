@@ -1,14 +1,11 @@
 // src/pages/ProjectDemo.tsx
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import CodeBlock from '../components/CodeBlock';
+import { trackProjectView } from '../utils/analytics';
 
-import { PlotData, ProjectDemoData } from "../types/projectDemo"
-import { rushYardProject } from '../projects/rush_yard';
-import { tradingFramework } from '../projects/trading_framework';
-import { volatilityModel } from '../projects/volatility_model';
-import { optionProfitModel } from '../projects/option_profit_model';
-import { andyXgBoost } from '../projects/andy_XgBoost';
+import { PlotData } from "../types/projectDemo"
+import { projectRegistry } from '../projects';
 
 const ProjectDemo: React.FC = () => {
   const { projectId } = useParams<{ projectId: string }>();
@@ -16,6 +13,16 @@ const ProjectDemo: React.FC = () => {
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
   const codeSampleRefs = useRef<{ [key: string]: HTMLDivElement | null }>({});
   const visualizationsRef = useRef<HTMLDivElement | null>(null);
+
+  // Project demo data with code samples and plots
+  const demo = projectRegistry[projectId || ''];
+
+  // Track project view
+  useEffect(() => {
+    if (demo) {
+      trackProjectView(demo.title);
+    }
+  }, [demo]);
 
   const scrollToSection = (label: string) => {
     let element = codeSampleRefs.current[label];
@@ -33,98 +40,6 @@ const ProjectDemo: React.FC = () => {
       });
     }
   };
-
-  // Project demo data with code samples and plots
-  const projectDemos: { [key: string]: ProjectDemoData } = {
-    '1': rushYardProject,
-    '2': tradingFramework,
-    '3': volatilityModel,
-    '4': {
-      id: '4',
-      title: 'Portfolio Website - Code Demo',
-      description: 'Technical implementation of this portfolio',
-      codeSamples: [
-        {
-          label: 'Responsive Layout Component',
-          description: 'Tailwind CSS-based responsive grid system',
-          code: `export const ResponsiveGrid: React.FC<Props> = ({ children }) => {
-  return (
-    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-      {children}
-    </div>
-  );
-};
-
-// Usage in Projects page:
-<ResponsiveGrid>
-  {projects.map(project => (
-    <ProjectCard key={project.id} project={project} />
-  ))}
-</ResponsiveGrid>`
-        },
-        {
-          label: 'Project Filter Hook',
-          description: 'Custom React hook for category filtering',
-          code: `const useProjectFilter = (projects, initialCategory = 'all') => {
-  const [selectedCategory, setSelectedCategory] = useState(initialCategory);
-  
-  const filteredProjects = useMemo(() => {
-    return selectedCategory === 'all'
-      ? projects
-      : projects.filter(p => p.category === selectedCategory);
-  }, [projects, selectedCategory]);
-  
-  return {
-    filteredProjects,
-    selectedCategory,
-    setSelectedCategory,
-    projectCount: filteredProjects.length
-  };
-};`
-        },
-        {
-          label: 'Dark Theme Implementation',
-          description: 'Custom Tailwind theme configuration',
-          code: `// tailwind.config.js
-export default {
-  theme: {
-    extend: {
-      colors: {
-        slate: {
-          900: '#0f172a',
-          800: '#1e293b',
-          700: '#334155',
-          600: '#475569',
-          400: '#94a3b8'
-        }
-      },
-      backgroundImage: {
-        'gradient-radial': 'radial-gradient(var(--tw-gradient-stops))',
-        'gradient-conic': 'conic-gradient(from 180deg at 50% 50%, var(--tw-gradient-stops))'
-      }
-    }
-  }
-}`
-        }
-      ],
-      plots: [
-        {
-          title: 'Component Architecture',
-          description: 'Visual representation of component hierarchy',
-          imageUrl: 'https://via.placeholder.com/600x400?text=Component+Architecture'
-        },
-        {
-          title: 'Performance Metrics',
-          description: 'Lighthouse scores and Core Web Vitals',
-          imageUrl: 'https://via.placeholder.com/600x400?text=Performance+Metrics'
-        }
-      ]
-    },
-    '5': optionProfitModel,
-    '6': andyXgBoost
-  };
-
-  const demo = projectDemos[projectId || ''];
 
   if (!demo) {
     return (
@@ -228,6 +143,7 @@ export default {
             </div>
 
             {/* Plots Section */}
+            {demo.plots && demo.plots.length > 0 && (
             <div ref={visualizationsRef}>
               <h2 className="text-4xl font-bold text-white mb-12">Visualizations & Results</h2>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
@@ -255,6 +171,7 @@ export default {
                 ))}
               </div>
             </div>
+            )}
           </div>
         </div>
       </section>

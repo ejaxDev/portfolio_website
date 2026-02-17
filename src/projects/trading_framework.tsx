@@ -3,23 +3,23 @@ import { ProjectDemoData } from "../types/projectDemo"
 export const tradingFramework: ProjectDemoData = {
       id: '2',
       title: 'Live Trading Framework - Code Demo',
-      description: 'Python-based automated trading system implementation',
+      description: 'Python-based automated trading system with modular architecture for live options trading',
       codeSamples: [
         {
-          label: 'Initial Setup and ansyncio Loop',
-          description: 'Python-based live trading system with async event loop',
+          label: '1. Imports & Type Definitions',
+          description: 'Core imports and type literals for timeframe configurations',
           code: `"""
 Live Options Trading Framework
 ================================
 Automated intraday SPY options trading system with ML-based signal generation.
 
 Key Components:
-- Real-time market data streaming via Tastytrade dxFeed WebSocket
+- Real-time market data streaming via Massive WebSocket (Polygon)
 - XGBoost ML model for volatility prediction
 - Alpaca API for order execution
+- Tastytrade API for options chain data and pricing
 - Pluggable strategy architecture
 - Daily auto-shutdown at market close
-
 """
 
 import os
@@ -51,10 +51,12 @@ load_dotenv()
 # TYPE DEFINITIONS
 # ============================================================================
 
-Timeframe = Literal["1s", "5s", "10s", "30s", "1m"]
-
-
-# ============================================================================
+Timeframe = Literal["1s", "5s", "10s", "30s", "1m"]`
+        },
+        {
+          label: '2. Data Classes',
+          description: 'Configuration, position tracking, and helper function containers',
+          code: `# ============================================================================
 # DATA CLASSES
 # ============================================================================
 
@@ -140,10 +142,12 @@ class Position:
     put_current_price: Callable | None
     put_exit_price: float | None
 
-    extraInfo: dict | None
-
-
-# ============================================================================
+    extraInfo: dict | None`
+        },
+        {
+          label: '3. Strategy Class',
+          description: 'Pluggable strategy architecture with ML model integration',
+          code: `# ============================================================================
 # STRATEGY CLASS
 # ============================================================================
 
@@ -215,10 +219,12 @@ class Strategy:
         for (start_time, end_time), value in self.OTM_logic.otm_logic.items():
             if start_time <= now_time < end_time:
                 return value
-        return 0
-
-
-# ============================================================================
+        return 0`
+        },
+        {
+          label: '4. Trader Initialization',
+          description: 'LiveTrader class initialization with API connections (Alpaca, Tastytrade, Massive)',
+          code: `# ============================================================================
 # LIVE TRADER CLASS
 # ============================================================================
 
@@ -227,7 +233,7 @@ class liveTrader:
     Core trading system managing data streams, orders, and positions.
     
     Architecture:
-    - Connects to Tastytrade dxFeed for real-time 1-minute SPY candles
+    - Connects to Massive WebSocket (Polygon) for real-time 1-minute SPY candles
     - Uses Tastytrade API for options chain data and pricing
     - Executes orders via Alpaca trading API
     - Runs async event loop with multiple concurrent tasks
@@ -250,7 +256,7 @@ class liveTrader:
             config: Config instance with system parameters
         
         Notes:
-            - Connects to Alpaca and Tastytrade on initialization
+            - Connects to Alpaca, Massive (SPY data), and Tastytrade (options) on initialization
             - Fetches current options chain for SPY
             - Loads account buying power
         """
@@ -291,9 +297,12 @@ class liveTrader:
         self.options_chain = pd.DataFrame(
             self.tasty.api.get('/option-chains/SPY/nested')['data']['items'][0]['expirations'][0]['strikes']
         )
-        self.api_quote_token = self.tasty.api.get('/api-quote-tokens')
-
-    # ========================================================================
+        self.api_quote_token = self.tasty.api.get('/api-quote-tokens')`
+        },
+        {
+          label: '5. Main Async Event Loop',
+          description: 'Entrypoint coordinating data stream, signal generation, exit logic, and shutdown tasks',
+          code: `    # ========================================================================
     # MAIN EVENT LOOP
     # ========================================================================
     
@@ -338,13 +347,45 @@ class liveTrader:
                 job.cancel()
             with contextlib.suppress(asyncio.CancelledError):
                 await asyncio.gather(stream_task, *jobs)
-`
+                
+    async def run_every_second(self, name: str, coro: Callable) -> None:
+        """
+        Execute coroutine every second.
+        
+        Args:
+            name: Task identifier
+            coro: Async function to execute
+        """
+        while True:
+            try:
+                await coro()
+            except Exception as e:
+                print(f"[{name}] Error: {e}")
+            await asyncio.sleep(1)
+    
+    async def shutdown_at_market_close(self) -> None:
+        """
+        Monitor time and shutdown system at 3:55 PM ET.
+        
+        Exits all positions and raises SystemExit to trigger cleanup.
+        """
+        while True:
+            now = datetime.datetime.now(pytz.timezone('US/Eastern'))
+            if now.time() >= datetime.time(15, 55):
+                print("[SHUTDOWN] Market close at 3:55 PM. Exiting all positions...")
+                # Exit all open positions
+                for position in self.positions.values():
+                    if position.call_time_entered and not position.call_time_exited:
+                        self.sell_call_side(position)
+                    if position.put_time_entered and not position.put_time_exited:
+                        self.sell_put_side(position)
+                raise SystemExit("Market close - shutdown initiated")
+            await asyncio.sleep(30)`
         },
         {
-          label: 'Web Socket Market Data Handler',
-          description: 'Real-time price stream processing',
-          code: `        """
-"""DataStreamer class for market data streaming and aggregation."""
+          label: '6. WebSocket Data Streaming',
+          description: 'Real-time SPY data via Massive WebSocket (Polygon) with bar aggregation',
+          code: `"""DataStreamer class for market data streaming and aggregation."""
 
 import os
 import time as t
@@ -449,9 +490,12 @@ class DataStreamer:
         print("[DATASTREAM] Entering normal operation mode...")
         while True:
             await asyncio.sleep(60)
-            await self._check_and_backfill()
-    
-    def _run_massive_ws(self):
+            await self._check_and_backfill()`
+        },
+        {
+          label: '7. Bar Aggregation & Backfilling',
+          description: 'Second-level bar aggregation into minute bars with gap detection',
+          code: `    def _run_massive_ws(self):
         """
         Run Massive WebSocket in background thread.
         
@@ -550,23 +594,6 @@ class DataStreamer:
                     for col in bar_to_update.keys():
                         self.bars_df.loc[mask, col] = bar_to_update[col]
             
-            # Check if we should send an update for the current forming bar
-            now_ms = self._now_ms()
-            current_bar_key = self._timeframe_start(now_ms)
-            
-            if bar_key == current_bar_key:  # This is the current forming bar
-                last_update = self._last_update_time.get(bar_key, 0)
-                time_since_update = (now_ms - last_update) / 1000  # Convert to seconds
-                
-                
-                if time_since_update >= self.update_frequency_seconds:
-                    # Send update for forming bar (not completed yet)
-                    forming_bar = self._current_second_bars[bar_key].copy()
-                    forming_bar.pop('count', None)
-                    forming_bar['forming'] = True  # Flag to indicate this is not a completed bar
-                    await self._on_bar_update(forming_bar)
-                    self._last_update_time[bar_key] = now_ms
-            
             # Check for completed bars and clean up tracking
             current_bar = self._timeframe_start(self._now_ms())
             completed_bars = [k for k in self._current_second_bars.keys() if k < current_bar]
@@ -575,184 +602,28 @@ class DataStreamer:
                 completed_bar = self._current_second_bars.pop(completed_key)
                 completed_bar.pop('count', None)
                 completed_bar['forming'] = False
-                # Notify subscribers of completion (bar already in DataFrame)
+                # Notify subscribers of completion
                 for callback in self.subscribers:
                     try:
                         await callback(completed_bar)
                     except Exception as e:
                         print(f"[DATASTREAM] Error in subscriber callback: {e}")
-                        print(f"[DATASTREAM] Full traceback:")
                         traceback.print_exc()
-                # Clean up update tracking
-                self._last_update_time.pop(completed_key, None)
-                
+                        
         except Exception as e:
             print(f"[DATASTREAM] Error handling aggregate: {e}")
     
-    async def _on_bar_update(self, bar: dict) -> None:
-        """
-        Handle forming bar update (not yet completed).
-        
-        Notifies subscribers of current state without adding to bars_df.
-        
-        Args:
-            bar: Dict with OHLCV data and 'forming' flag set to True
-        """
-        # Validate bar
-        if pd.isna(bar.get('close')) or pd.isna(bar.get('t_ms')):
-            return
-        
-        # Notify all subscribers of forming bar
-        for callback in self.subscribers:
-            try:
-                await callback(bar)
-            except Exception as e:
-                print(f"[DATASTREAM] Error in subscriber callback (forming): {e}")
-                print(f"[DATASTREAM] Full traceback:")
-                traceback.print_exc()
-    
-    async def _on_bar_complete(self, bar: dict) -> None:
-        """
-        Handle completed timeframe bar.
-        
-        Appends to bars_df and notifies all subscribers.
-        
-        Args:
-            bar: Dict with OHLCV data and 'forming' flag set to False
-        """
-        # Validate bar
-        if pd.isna(bar.get('close')) or pd.isna(bar.get('t_ms')):
-            print(f"[DATASTREAM] Skipping bar with NaN: {bar}")
-            return
-        
-        # Append to bars_df
-        t_ms_val = bar['t_ms']
-        if len(self.bars_df) == 0 or t_ms_val not in self.bars_df['t_ms'].values:
-            self.bars_df = pd.concat(
-                [self.bars_df, pd.DataFrame([bar])],
-                ignore_index=True
-            ).sort_values('t_ms').reset_index(drop=True)
-        
-        # Notify all subscribers
-        for callback in self.subscribers:
-            try:
-                await callback(bar)
-            except Exception as e:
-                print(f"[DATASTREAM] Error in subscriber callback (complete): {e}")
-                print(f"[DATASTREAM] Full traceback:")
-                traceback.print_exc()
-    
-    async def _backfill_from_api(self) -> None:
-        """
-        Backfill historical minute bars from Polygon REST API.
-        
-        Fetches today's data and merges with existing bars.
-        """
-        try:
-            date = datetime.datetime.now(pytz.UTC).strftime('%Y-%m-%d')
-            print(f"[DATASTREAM] Backfilling from API for {date}...")
-            
-            # Only backfill first symbol for now (can extend to multi-symbol)
-            symbol = self.symbols[0]
-            
-            response = requests.get(
-                f'https://api.polygon.io/v2/aggs/ticker/{symbol}/range/1/minute/{date}/{date}',
-                params={
-                    'adjusted': 'true',
-                    'sort': 'asc',
-                    'limit': 50000,
-                    'apiKey': os.getenv("POLYGON_API_KEY", "blah")
-                }
-            )
-            
-            if response.status_code == 200:
-                results = response.json().get('results', [])
-                if results:
-                    new_df = pd.DataFrame(results).rename(columns={
-                        't': 't_ms', 'h': 'high', 'l': 'low',
-                        'o': 'open', 'c': 'close', 'v': 'volume'
-                    })
-                    
-                    if 'vwap' not in new_df.columns:
-                        if 'vw' in new_df.columns:
-                            new_df['vwap'] = new_df['vw']
-                        else:
-                            new_df['vwap'] = new_df['close']
-                    
-                    if len(self.bars_df) > 0:
-                        old_count = len(self.bars_df)
-                        self.bars_df = pd.concat([self.bars_df, new_df]).drop_duplicates(
-                            subset=['t_ms'], keep='last'
-                        ).sort_values('t_ms').reset_index(drop=True)
-                        print(f"[DATASTREAM] Added {len(self.bars_df) - old_count} bars. Total: {len(self.bars_df)}")
-                    else:
-                        self.bars_df = new_df
-                        print(f"[DATASTREAM] Initialized with {len(new_df)} bars")
-                    
-                    self._last_api_backfill = datetime.datetime.now()
-                else:
-                    print(f"[DATASTREAM] No results from API")
-            else:
-                print(f"[DATASTREAM] API error: {response.status_code}")
-                
-        except Exception as e:
-            print(f"[DATASTREAM] Backfill error: {e}")
-    
-    async def _check_and_backfill(self) -> None:
-        """
-        Check if data is current and backfill if stale.
-        
-        If data is >70 seconds behind, waits 3 minutes then backfills.
-        """
-        try:
-            if len(self.bars_df) == 0:
-                print("[DATASTREAM] No data yet, backfilling...")
-                await asyncio.sleep(180)
-                await self._backfill_from_api()
-                return
-            
-            latest_t_ms = self.bars_df['t_ms'].max()
-            latest_dt = datetime.datetime.fromtimestamp(latest_t_ms / 1000, pytz.UTC)
-            now_utc = datetime.datetime.now(pytz.UTC)
-            
-            time_behind_seconds = (now_utc - latest_dt).total_seconds()
-            
-            if time_behind_seconds > 70:
-                print(f"[DATASTREAM] Data stale: {time_behind_seconds/60:.1f} min behind")
-                await asyncio.sleep(180)
-                await self._backfill_from_api()
-                
-        except Exception as e:
-            print(f"[DATASTREAM] Error checking completeness: {e}")
-    
-    def get_bars(self, symbol: str = None, count: int = None) -> pd.DataFrame:
-        """
-        Get recent bars.
-        
-        Args:
-            symbol: Symbol to filter (currently only supports first symbol)
-            count: Number of recent bars to return
-        
-        Returns:
-            DataFrame with OHLCV bars
-        """
-        df = self.bars_df.copy()
-        if count:
-            df = df.tail(count)
-        return df
-    
-    def _timeframe_start(self, ms: int) -> int:
-        """Round timestamp down to timeframe boundary."""
-        timeframe_ms = self.timeframe_seconds * 1000
-        return ms - (ms % timeframe_ms)
+    def _timeframe_start(self, t_ms: float) -> float:
+        """Calculate timeframe start timestamp."""
+        return float(int(t_ms / 1000 / self.timeframe_seconds) * self.timeframe_seconds * 1000)
     
     def _now_ms(self) -> float:
         """Get current time in milliseconds."""
         return float(t.time() * 1000)`
         },
         {
-          label: 'Order Execution Engine',
-          description: 'Automated order placement based on callback functions',
+          label: '8. Signal Generation & Entry Logic',
+          description: 'Timeframe-aligned signal checks and entry order execution',
           code: `    # ========================================================================
     # SIGNAL GENERATION
     # ========================================================================
@@ -842,9 +713,12 @@ class DataStreamer:
             elif side == 1:  # Call only
                 self.buy_call_side(curr_price, OTM)
             elif side == -1:  # Put only
-                self.buy_put_side(curr_price, OTM)
-
-    # ========================================================================
+                self.buy_put_side(curr_price, OTM)`
+        },
+        {
+          label: '9. Exit Logic & Position Management',
+          description: 'Continuous position monitoring with strategy-driven exit signals',
+          code: `    # ========================================================================
     # EXIT LOGIC
     # ========================================================================
     
@@ -898,71 +772,57 @@ class DataStreamer:
             elif exit == -1:  # Exit put
                 try:
                     self.sell_put_side(position)
-                    position.put_exit_price = position.put_current_price(position.put_symbol)
                     position.put_time_exited = datetime.datetime.now()
-                    
+                    position.put_exit_price = position.put_current_price(position.put_symbol)
+
                     if position.call_time_entered is None or position.call_time_exited is not None:
                         pos_to_delete[k] = position
                 except Exception as e:
                     print("Error selling put side during exit logic:", e)
-
-        # Archive completed trades
-        new_rows = []
-        for k, v in pos_to_delete.items():
-            del self.positions[k]
-            row = {
-                'call_time_entered': v.call_time_entered,
-                'call_time_exited': v.call_time_exited,
-                'call_strike': v.call_strike,
-                'call_entry_price': v.call_entry_price,
-                'call_contract_qty': v.call_contract_qty,
-                'call_exit_price': v.call_exit_price,
-                'put_time_entered': v.put_time_entered,
-                'put_time_exited': v.put_time_exited,
-                'put_strike': v.put_strike,
-                'put_contract_qty': v.put_contract_qty,
-                'put_entry_price': v.put_entry_price,
-                'put_exit_price': v.put_exit_price,
-            }
-            new_rows.append(row)
-        self.trades_today.extend(new_rows)
-
-    # ========================================================================
-    # ORDER EXECUTION - ENTRY
+        
+        # Move completed positions to trades_today
+        for k, pos in pos_to_delete.items():
+            self.trades_today.append(pos.__dict__)
+            del self.positions[k]`
+        },
+        {
+          label: '10. Order Execution (Buy/Sell)',
+          description: 'Alpaca API market orders for calls, puts, and straddles',
+          code: `    # ========================================================================
+    # ORDER EXECUTION
     # ========================================================================
     
     def buy_both_sides(self, curr_price: float, OTM: int) -> None:
         """
-        Enter straddle position (buy call and put at same strike).
+        Enter straddle position (both call and put).
         
         Args:
             curr_price: Current SPY price
             OTM: Dollars out-of-the-money for strike selection
         
         Process:
-        1. Fetch option data for call and put
-        2. Calculate contract quantities (2% of buying power per side)
+        1. Fetch call and put option data
+        2. Calculate contract quantities (1% buying power each side)
         3. Submit market orders via Alpaca
-        4. Create Position object and add to self.positions
-        
-        Risk: Uses 4% total buying power per straddle
+        4. Create Position tracking both sides
         """
         try:
             call_option_data = self.get_option_data('call', round(curr_price), OTM)
             put_option_data = self.get_option_data('put', round(curr_price), OTM)
             
             if call_option_data is None or put_option_data is None:
-                print("Could not retrieve option data for both sides.")
+                print("Could not retrieve option data for straddle.")
                 return
             
-            call_contract_count = self.amt_trading_today * .02 // (float(call_option_data['last-mkt']) * 100)
-            put_contract_count = self.amt_trading_today * .02 // (float(put_option_data['last-mkt']) * 100)
-
+            # Calculate contract counts (1% of buying power per side)
+            call_contract_count = self.amt_trading_today * .01 // (float(call_option_data['last-mkt']) * 100)
+            put_contract_count = self.amt_trading_today * .01 // (float(put_option_data['last-mkt']) * 100)
+            
             if call_contract_count < 1 or put_contract_count < 1:
-                print("Not enough funds to buy contracts.")
+                print("Not enough funds for straddle.")
                 return
-
-            # Submit orders
+            
+            # Submit call order
             call_market_order_data = MarketOrderRequest(
                 symbol=call_option_data['symbol'].replace(' ', ""),
                 qty=call_contract_count,
@@ -971,6 +831,7 @@ class DataStreamer:
             )
             self.trading_client.submit_order(order_data=call_market_order_data)
             
+            # Submit put order
             put_market_order_data = MarketOrderRequest(
                 symbol=put_option_data['symbol'].replace(' ', ""),
                 qty=put_contract_count,
@@ -978,7 +839,7 @@ class DataStreamer:
                 time_in_force=TimeInForce.DAY
             )
             self.trading_client.submit_order(order_data=put_market_order_data)
-            
+
             # Create position
             pos = Position(
                 call_time_entered=datetime.datetime.now(), 
@@ -1004,131 +865,12 @@ class DataStreamer:
         except Exception as e:
             print("Error buying both sides:", e)
     
-    def buy_call_side(self, curr_price: float, OTM: int) -> None:
-        """
-        Enter call-only position.
-        
-        Args:
-            curr_price: Current SPY price
-            OTM: Dollars out-of-the-money for strike selection
-        
-        Process:
-        1. Fetch call option data
-        2. Calculate contract quantity (2% of buying power)
-        3. Submit market order via Alpaca
-        4. Create Position with put fields set to None
-        """
-        try:
-            call_option_data = self.get_option_data('call', round(curr_price), OTM)
-            if call_option_data is None:
-                print("Could not retrieve option data for call side.")
-                return
-            
-            call_contract_count = self.amt_trading_today * .02 // (float(call_option_data['last-mkt']) * 100)
-            if call_contract_count < 1:
-                print("Not enough funds to buy call contracts.")
-                return
-            
-            call_market_order_data = MarketOrderRequest(
-                symbol=call_option_data['symbol'].replace(' ', ""),
-                qty=call_contract_count,
-                side=OrderSide.BUY,
-                time_in_force=TimeInForce.DAY
-            )
-            self.trading_client.submit_order(order_data=call_market_order_data)
-
-            pos = Position(
-                call_time_entered=datetime.datetime.now(), 
-                call_time_exited=None,
-                call_symbol=call_option_data['symbol'], 
-                call_strike=call_option_data['strike-price'], 
-                call_entry_price=float(call_option_data['last-mkt']),
-                call_contract_qty=call_contract_count, 
-                call_current_price=self.get_last_option_price, 
-                call_exit_price=None,
-                put_time_entered=None, 
-                put_time_exited=None,
-                put_symbol=None, 
-                put_strike=None, 
-                put_entry_price=None,
-                put_contract_qty=None, 
-                put_current_price=None, 
-                put_exit_price=None,
-                extraInfo={}
-            )
-            
-            self.positions[self.id_count] = pos
-            self.id_count += 1
-        except Exception as e:
-            print("Error buying call side:", e)
-        
-    def buy_put_side(self, curr_price: float, OTM: int) -> None:
-        """
-        Enter put-only position.
-        
-        Args:
-            curr_price: Current SPY price
-            OTM: Dollars out-of-the-money for strike selection
-        
-        Process:
-        1. Fetch put option data
-        2. Calculate contract quantity (2% of buying power)
-        3. Submit market order via Alpaca
-        4. Create Position with call fields set to None
-        """
-        try:
-            put_option_data = self.get_option_data('put', round(curr_price), OTM)
-            if put_option_data is None:
-                print("Could not retrieve option data for put side.")
-                return
-            
-            put_contract_count = self.amt_trading_today * .02 // (float(put_option_data['last-mkt']) * 100)
-            if put_contract_count < 1:
-                print("Not enough funds to buy put contracts.")
-                return
-
-            put_market_order_data = MarketOrderRequest(
-                symbol=put_option_data['symbol'].replace(' ', ""),
-                qty=put_contract_count,
-                side=OrderSide.BUY,
-                time_in_force=TimeInForce.DAY
-            )
-            self.trading_client.submit_order(order_data=put_market_order_data)
-            
-            pos = Position(
-                call_time_entered=None, 
-                call_time_exited=None,
-                call_symbol=None, 
-                call_strike=None, 
-                call_entry_price=None,
-                call_contract_qty=None, 
-                call_current_price=None, 
-                call_exit_price=None,
-                put_time_entered=datetime.datetime.now(), 
-                put_time_exited=None,
-                put_symbol=put_option_data['symbol'], 
-                put_strike=put_option_data['strike-price'], 
-                put_entry_price=float(put_option_data['last-mkt']),
-                put_contract_qty=put_contract_count, 
-                put_current_price=self.get_last_option_price, 
-                put_exit_price=None,
-                extraInfo={}
-            )
-            self.positions[self.id_count] = pos
-            self.id_count += 1
-        except Exception as e:
-            print("Error buying put side:", e)
-
-    # ========================================================================
-    # ORDER EXECUTION - EXIT
-    # ========================================================================
-    
     def sell_call_side(self, position: Position) -> None:
         """
-        Close call side of position.
+        Sell call side of position.
         
         Args:
-            position: Position object with call details
+            position: Position object with call_symbol and call_contract_qty
         
         Submits market sell order via Alpaca.
         """
@@ -1142,10 +884,10 @@ class DataStreamer:
     
     def sell_put_side(self, position: Position) -> None:
         """
-        Close put side of position.
+        Sell put side of position.
         
         Args:
-            position: Position object with put details
+            position: Position object with put_symbol and put_contract_qty
         
         Submits market sell order via Alpaca.
         """
@@ -1155,17 +897,12 @@ class DataStreamer:
             side=OrderSide.SELL,
             time_in_force=TimeInForce.DAY
         )
-        self.trading_client.submit_order(order_data=put_market_order_data)
-`
+        self.trading_client.submit_order(order_data=put_market_order_data)`
         },
-        {          label: 'Option Data Retrieval',
-          description: 'Fetch option contract details from Tastytrade',
+        {
+          label: '11. Option Data & Pricing',
+          description: 'Tastytrade API integration for options chain and real-time pricing',
           code: `    # ========================================================================
-    # HELPER FUNCTIONS
-    # ========================================================================
-    
-
-    # ========================================================================
     # OPTIONS DATA & PRICING
     # ========================================================================
     
@@ -1232,24 +969,7 @@ class DataStreamer:
             return float(option_data['last-mkt'])
         except Exception as e:
             print(f"Error fetching price for {option_ticker}: {e}")
-            return 0.0`}
-      ],
-
-      plots: [
-        {
-          title: 'Trading Performance',
-          description: 'Cumulative returns and drawdown analysis',
-          imageUrl: 'https://via.placeholder.com/600x400?text=Trading+Performance'
-        },
-        {
-          title: 'Signal Accuracy',
-          description: 'Win rate and profit factor by signal type',
-          imageUrl: 'https://via.placeholder.com/600x400?text=Signal+Accuracy'
-        },
-        {
-          title: 'Risk Metrics',
-          description: 'Sharpe ratio and maximum drawdown over time',
-          imageUrl: 'https://via.placeholder.com/600x400?text=Risk+Metrics'
+            return 0.0`
         }
       ]
     }

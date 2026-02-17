@@ -1,5 +1,5 @@
-import React from "react";
-import { BrowserRouter as Router, Routes, Route} from "react-router-dom";
+import React, { useEffect } from "react";
+import { BrowserRouter as Router, Routes, Route, useLocation } from "react-router-dom";
 import NavBar from "./components/layout/NavBar";
 import Home from './pages/Home';
 import About from './pages/About';
@@ -8,12 +8,21 @@ import ProjectDemo from './pages/ProjectDemo';
 import Contact from './pages/Contact';
 import Resume from './pages/Resume';
 import Trading from './pages/Trading';
-// Add this route in the Routes section:
-const App: React.FC = () => {
+import { logPageView } from './utils/analytics';
+
+// Component to track route changes
+const AppContent: React.FC = () => {
+  const location = useLocation();
+
+  useEffect(() => {
+    // Track page view on route change
+    logPageView(location.pathname, document.title);
+  }, [location]);
+
   return (
-    <Router basename="/portfolio_website/">
+    <>
       <NavBar />
-      <div className="pt-16">
+      <div className="pt-12">
         <Routes>
           <Route path="" element={<Home />} />
           <Route path="about" element={<About />} />
@@ -23,6 +32,14 @@ const App: React.FC = () => {
           <Route path="resume" element={<Resume />} />
         </Routes>
       </div>
+    </>
+  );
+};
+
+const App: React.FC = () => {
+  return (
+    <Router basename="/portfolio_website/">
+      <AppContent />
     </Router>
   );
 };

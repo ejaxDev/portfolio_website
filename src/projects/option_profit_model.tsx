@@ -2,477 +2,668 @@ import { ProjectDemoData } from "../types/projectDemo"
 
 export const optionProfitModel: ProjectDemoData = {
   id: "5",
-  title: "Options Profit Prediction Model – Code Demo",
+  title: "SPY Options Profit Prediction – Code Demo",
   description:
-    "XGBoost binary classifier predicting profitable SPY options trades at end of day. Features 100+ engineered variables across price dynamics, volume patterns, and intraday positioning. Deployed to AWS S3 for production inference.",
+    "Predicts if buying a SPY option NOW will be profitable by 3:30pm. Strategy: scan all strikes throughout the day, buy when model shows high confidence, sell at 3:30pm. Uses rolling price statistics (5min to 2hr windows) to detect patterns that lead to profitable end-of-day positions.",
   codeSamples: [
     {
-      label: "Multi-Window Feature Engineering",
-      description:
-        "Parallel processing to create 100+ features across price, direction, momentum, and volume dimensions",
-      code: `import numpy as np
+      label: "1. Load SPY Minute Data",
+      description: "Download 5-minute SPY bars from Polygon API (market hours only)",
+      code: `import massive
 import pandas as pd
-from concurrent.futures import ThreadPoolExecutor
+from massive import RESTClient
 
-# Configurable window sets for feature engineering
-price_windows = [3, 5, 10, 20, 30]      # for std/range
-dir_windows   = [3, 5, 10, 20, 30]      # for pct_up, dir_consistency
-acorr_windows = [5, 10, 20]             # for dir_autocorr
-ret_windows   = [3, 5, 10, 20]          # for momentum / sharpe
-vol_windows   = [5, 10, 20, 30]         # for volume MAs/std
+polygon_api_key = 'YOUR_POLYGON_API_KEY'
+client = RESTClient(polygon_api_key)
 
+aggs = []
+for a in client.list_aggs(
+    "SPY",
+    5,
+    "minute",
+    "2022-05-01",
+    "2025-12-31",
+    adjusted="true",
+    sort="asc",
+    limit=50000,
+):
+    aggs.append(a)
 
-def process_one_group(args):
-    """
-    Process one option contract (unique strike/expiry combination) to generate
-    all time-series features using rolling windows.
-    
-    Returns DataFrame with 100+ engineered features.
-    """
-    key, v = args
-    v = v.sort_values(by='TTE', ascending=False).copy()
+minute_spy_df = pd.DataFrame(aggs)
 
-    # === CORE SERIES ===
-    v['ret'] = v['price'].pct_change()
-    v['dir'] = v['price'].diff().apply(
-        lambda x: 1 if x > 0 else (-1 if x < 0 else 0)
-    )
-    v['dir_agree'] = (v['dir'] == v['dir'].shift(1)).astype(int)
+# Convert to Eastern Time
+minute_spy_df['datetime'] = pd.to_datetime(
+    minute_spy_df['timestamp'], 
+    unit='ms', 
+    utc=True
+).dt.tz_convert('America/New_York')
 
-    # === MULTI-WINDOW PRICE STATISTICS ===
-    for w in price_windows:
-        v[f'std_price_{w}'] = v['price'].rolling(
-            window=w, min_periods=1
-        ).std()
-        v[f'range_price_{w}'] = (
-            v['price'].rolling(window=w, min_periods=1).max()
-            - v['price'].rolling(window=w, min_periods=1).min()
-        )
-
-    # === MULTI-WINDOW DIRECTIONAL FEATURES ===
-    for w in dir_windows:
-        # Percentage of upward moves
-        v[f'pct_up_{w}'] = (v['dir'] == 1).rolling(
-            w, min_periods=1
-        ).mean()
-        # Direction consistency (trend strength)
-        v[f'dir_consistency_{w}'] = v['dir_agree'].rolling(
-            w, min_periods=1
-        ).mean()
-
-    # Directional autocorrelation (momentum persistence)
-    for w in acorr_windows:
-        v[f'dir_autocorr_{w}'] = v['dir'].rolling(
-            w, min_periods=2
-        ).apply(fast_sign_autocorr, raw=True)
-
-    # === MONEYNESS & TIME-TO-EXPIRY ===
-    v['rel_moneyness'] = v['OTM'] / (v['price'] + 1e-6)
-    v['log_moneyness'] = np.log(v['price'] / (v['price'] + v['OTM'] + 1e-9))
-    v['moneyness_sq']  = v['rel_moneyness'] ** 2
-
-    v['inv_TTE'] = 1.0 / (v['TTE'] + 1e-6)
-    v['log_TTE'] = np.log(v['TTE'] + 1.0)
-    v['TTE_OTM_interact'] = v['TTE'] * v['OTM']
-
-    # === RELATIVE VOLATILITY ===
-    for w in price_windows:
-        v[f'rel_std_{w}']   = v[f'std_price_{w}'] / (v['price'] + 1e-6)
-        v[f'rel_range_{w}'] = v[f'range_price_{w}'] / (v['price'] + 1e-6)
-
-    # === MOMENTUM & SHARPE RATIOS ===
-    for w in ret_windows:
-        v[f'ret_sum_{w}'] = v['ret'].rolling(w, min_periods=2).sum()
-        v[f'sharpe_{w}']  = v[f'ret_sum_{w}'] / (
-            v[f'std_price_{w}'] + 1e-6
-        )
-
-    return v
-
-
-# === RUN IN PARALLEL ===
-grouped = list(option_dist_df.groupby('unique_key'))
-
-results = []
-with ThreadPoolExecutor(max_workers=8) as ex:
-    for i, out in enumerate(ex.map(process_one_group, grouped), 1):
-        results.append(out)
-        if i % 50 == 0:
-            print(f"Processed {i} / {len(grouped)} groups", end="\\r")
-
-option_dist_df = pd.concat(results).sort_index()`
-    },
-    {
-      label: "OHLC & Volume Features (Leak-Free)",
-      description:
-        "Previous candle features for microstructure analysis with proper time-shift to prevent lookahead bias",
-      code: `# === HIGH/LOW/OHLC SHAPE (LEAK-FREE) ===
-# Use previous candle to avoid lookahead bias
-v['open_prev']   = v['open_in_cents'].shift(1)
-v['close_prev']  = v['close_in_cents'].shift(1)
-v['high_prev']   = v['high_in_cents'].shift(1)
-v['low_prev']    = v['low_in_cents'].shift(1)
-v['vwap_prev']   = v['vwap_in_cents'].shift(1)
-v['volume_prev'] = v['volume'].shift(1)
-
-base = v['open_prev'] + 1e-6
-
-# Candle body and range
-v['body_prev']  = (v['close_prev'] - v['open_prev']) / base
-v['range_prev'] = (v['high_prev'] - v['low_prev']) / base
-
-# Upper and lower wicks (measuring indecision)
-upper_base = np.maximum(v['open_prev'], v['close_prev'])
-lower_base = np.minimum(v['open_prev'], v['close_prev'])
-
-v['upper_wick_prev'] = (v['high_prev'] - upper_base) / base
-v['lower_wick_prev'] = (lower_base - v['low_prev']) / base
-
-# VWAP position relative to open/close
-v['vwap_minus_open_prev']  = (v['vwap_prev'] - v['open_prev']) / base
-v['vwap_minus_close_prev'] = (v['vwap_prev'] - v['close_prev']) / base
-
-# Rolling candle statistics
-for w in [3, 5, 10, 20]:
-    v[f'body_prev_mean_{w}']  = v['body_prev'].rolling(
-        w, min_periods=1
-    ).mean()
-    v[f'range_prev_mean_{w}'] = v['range_prev'].rolling(
-        w, min_periods=1
-    ).mean()
-
-# === VOLUME FEATURES (LEAK-FREE) ===
-for w in vol_windows:
-    v[f'vol_ma_{w}']  = v['volume_prev'].rolling(
-        w, min_periods=1
-    ).mean()
-    v[f'vol_std_{w}'] = v['volume_prev'].rolling(
-        w, min_periods=2
-    ).std()
-
-# Volume z-score (unusual volume detection)
-v['vol_zscore_10'] = (
-    v['volume_prev'] - v['vol_ma_10']
-) / (v['vol_std_10'] + 1e-6)
-
-# Price-volume trend
-v['pv_trend'] = v['dir'] * (v['vol_ma_5'] / (v['vol_ma_10'] + 1e-6))`
-    },
-    {
-      label: "Intraday Position Features",
-      description:
-        "Since-market-open features tracking cumulative behavior and extreme positioning",
-      code: `# === SINCE-BEGINNING-OF-DAY FEATURES ===
-# Tracks position relative to day's open, high, low
-g_day = v.groupby('date')
-
-v['day_open_price'] = g_day['price'].transform('first')
-
-# Distance from open
-v['price_from_open'] = v['price'] - v['day_open_price']
-v['ret_from_open']   = v['price_from_open'] / (
-    v['day_open_price'] + 1e-6
-)
-
-# Day extremes so far
-v['day_high_so_far'] = g_day['price'].cummax()
-v['day_low_so_far']  = g_day['price'].cummin()
-
-# Distance from extremes (mean reversion signals)
-v['dist_from_day_high'] = v['price'] - v['day_high_so_far']
-v['dist_from_day_low']  = v['price'] - v['day_low_so_far']
-
-# Cumulative volume since open
-v['cum_vol_since_open'] = g_day['volume'].cumsum()
-
-# Expanding mean (VWAP-like for options)
-v['mean_price_since_open'] = (
-    g_day['price']
-    .expanding()
-    .mean()
-    .reset_index(level=0, drop=True)
-)`
-    },
-    {
-      label: "SHAP-Driven Interaction Features",
-      description:
-        "Advanced features discovered through SHAP analysis combining multiple dimensions",
-      code: `import numpy as np
-
-# Day range for normalization
-day_range = (
-    option_dist_df['day_high_so_far'] - option_dist_df['day_low_so_far']
-).replace(0, np.nan)
-
-# === POSITION IN DAY RANGE ===
-# Where is previous close in today's range?
-option_dist_df['close_prev_from_day_low'] = (
-    option_dist_df['close_prev'] - option_dist_df['day_low_so_far']
-)
-option_dist_df['close_prev_pos_in_day_range'] = (
-    option_dist_df['close_prev_from_day_low'] / (day_range + 1e-6)
-)
-
-# Current price vs day range
-option_dist_df['price_from_open_norm_range'] = (
-    option_dist_df['price_from_open'] / (day_range + 1e-6)
-)
-
-# === MOMENTUM × MONEYNESS / TTE INTERACTIONS ===
-option_dist_df['ret_from_open_x_rel_moneyness'] = (
-    option_dist_df['ret_from_open'] * option_dist_df['rel_moneyness']
-)
-option_dist_df['ret_from_open_x_inv_TTE'] = (
-    option_dist_df['ret_from_open'] * option_dist_df['inv_TTE']
-)
-option_dist_df['price_from_open_x_TTE_OTM'] = (
-    option_dist_df['price_from_open'] * 
-    option_dist_df['TTE_OTM_interact']
-)
-
-# === VOLATILITY REGIME INTERACTIONS ===
-option_dist_df['rel_std30_x_inv_TTE'] = (
-    option_dist_df['rel_std_30'] * option_dist_df['inv_TTE']
-)
-option_dist_df['rel_std30_x_rel_moneyness'] = (
-    option_dist_df['rel_std_30'] * option_dist_df['rel_moneyness']
-)
-option_dist_df['range20_x_ret_from_open'] = (
-    option_dist_df['range_prev_mean_20'] * 
-    option_dist_df['ret_from_open']
-)
-
-# === MICROSTRUCTURE VS DAY EXTREMES ===
-option_dist_df['vwap_prev_from_day_low'] = (
-    option_dist_df['vwap_prev'] - option_dist_df['day_low_so_far']
-)
-option_dist_df['vwap_prev_pos_in_day_range'] = (
-    option_dist_df['vwap_prev_from_day_low'] / (day_range + 1e-6)
-)
-
-# Distance from extremes normalized by open
-option_dist_df['dist_low_over_open'] = (
-    option_dist_df['dist_from_day_low'] / 
-    (option_dist_df['day_open_price'] + 1e-6)
-)`
-    },
-    {
-      label: "Model Training & SHAP Analysis",
-      description:
-        "XGBoost classifier with temporal train/test split and feature importance via SHAP",
-      code: `import xgboost as xgb
-import shap
-from sklearn.metrics import roc_auc_score, brier_score_loss
-
-# Top 20 features from SHAP analysis
-shap_feature_list = [
-    "dist_from_day_low", "day_low_so_far", "ret_from_open",
-    "moneyness_sq", "price_from_open", "TTE_OTM_interact",
-    "inv_TTE", "mean_price_since_open", "day_open_price",
-    "log_TTE", "day_high_so_far", "std_price_10",
-    "abs_diff_mean_20", "cum_vol_since_open", "log_moneyness",
-    "range_prev_mean_20", "rel_std_30", "dist_from_day_high",
-    "rel_range_30", "body_prev"
+# Filter to market hours only (9:30 AM - 4:00 PM ET)
+minute_spy_df = minute_spy_df[
+    (minute_spy_df['datetime'].dt.time >= pd.to_datetime("09:30").time()) & 
+    (minute_spy_df['datetime'].dt.time <= pd.to_datetime("16:00").time())
 ]
 
-# Temporal split (80/20) - no lookahead
-unique_dates = option_dist_df['date_obj'].unique()
-split_idx = int(len(unique_dates) * 0.8)
-train_dates = unique_dates[:split_idx]
-test_dates  = unique_dates[split_idx:]
+minute_spy_df = minute_spy_df.sort_values('datetime').reset_index(drop=True)
+minute_spy_df['date'] = minute_spy_df['datetime'].dt.date`
+    },
+    {
+      label: "2. Calculate Option Strikes to Fetch",
+      description: "For each day, find strikes within ±2% of opening price",
+      code: `import datetime
 
-cutoff_date = train_dates[-1]
-train_mask = option_dist_df['date_obj'] <= cutoff_date
-test_mask  = option_dist_df['date_obj'] >  cutoff_date
+def dateStrike2opt(edate, callPut, strike, useSPX=False):
+    """
+    Convert date, call/put, and strike to option ticker format.
+    Example: O:SPY250217C00600000 = SPY call expiring 2/17/25 at $600 strike
+    """
+    dtd = datetime.datetime.strptime(edate, "%Y-%m-%d")
+    blah = "O:SPY"
+    if useSPX:
+        blah = "O:SPXW"
+    option = blah + dtd.strftime("%y%m%d") + callPut + str(strike).zfill(5) + "000"
+    return option
 
-X_train = option_dist_df.loc[train_mask, shap_feature_list].values
-X_test  = option_dist_df.loc[test_mask,  shap_feature_list].values
 
-y_train = option_dist_df.loc[train_mask, 'target'].values
-y_test  = option_dist_df.loc[test_mask,  'target'].values
+# Calculate ±2% strikes for each day
+minute_spy_df['open_plus_2_pct'] = minute_spy_df.groupby('date')['open'].transform('first') * 1.02
+minute_spy_df['open_minus_2_pct'] = minute_spy_df.groupby('date')['open'].transform('first') * 0.98
 
-# XGBoost with regularization to prevent overfitting
-model = xgb.XGBClassifier(
-    n_estimators=200,
-    learning_rate=0.05,
-    max_depth=3,             # Shallow trees
-    subsample=0.9,
-    colsample_bytree=0.9,
-    min_child_weight=7,      # Strong regularization
-    gamma=0.2,
-    reg_lambda=3.0,
-    reg_alpha=0.5,
-    eval_metric="logloss",
-    random_state=42,
-    n_jobs=-1
+# Build dictionary of all options we need to fetch
+options_needed = {}
+for k, v in minute_spy_df.groupby('date'):
+    row = v.iloc[0]
+    date = row['datetime'].strftime("%Y-%m-%d")
+    edate = row['datetime'].strftime("%Y-%m-%d")
+    min_strike = int(row['open_minus_2_pct'])
+    max_strike = int(row['open_plus_2_pct']) + 1
+    
+    # For each strike in range, fetch both call and put
+    for strike in range(min_strike, max_strike):
+        call_option = dateStrike2opt(edate, "C", strike)
+        put_option = dateStrike2opt(edate, "P", strike)
+        options_needed[call_option] = date
+        options_needed[put_option] = date
+
+print(f"Total options to fetch: {len(options_needed):,}")`
+    },
+    {
+      label: "3. Fetch Option Data in Parallel",
+      description: "Download 5-minute bars for all option contracts using multiple threads",
+      code: `from concurrent.futures import ThreadPoolExecutor
+
+def process_option(key, value):
+    """
+    Fetch 5-minute aggregates for a single option on its trading day.
+    """
+    aggs = []
+    for a in client.list_aggs(
+        key,
+        5,
+        "minute",
+        value,
+        (pd.to_datetime(value) + pd.Timedelta(days=1)).strftime("%Y-%m-%d"),
+        adjusted="true",
+        sort="asc",
+        limit=50000,
+    ):
+        if key not in options_needed:
+            continue
+        aggs.append(a)
+    return aggs
+
+# Fetch all options in parallel (much faster than sequential)
+options = {}
+count = 0
+with ThreadPoolExecutor() as executor:
+    futures = {executor.submit(process_option, key, value): key for key, value in options_needed.items()}
+    for future in futures:
+        options[futures[future]] = future.result()
+        count += 1
+        if count % 10 == 0:
+            print(f"Processed {count / len(options_needed) * 100:.2f}% options", end="\\r")
+
+print(f"\\nFetched {len(options):,} option contracts")`
+    },
+    {
+      label: "4. Build Option DataFrame",
+      description: "Convert raw data to structured DataFrame and join with SPY prices",
+      code: `# Collect all data in a list first (faster than concat in loop)
+data = []
+count = 0
+for option, aggs in options.items():
+    if not aggs:
+        continue
+    for agg in aggs:
+        data.append({
+            'option': option,
+            'timestamp': agg.timestamp,
+            'open': agg.open,
+            'high': agg.high,
+            'low': agg.low,
+            'close': agg.close,
+            'volume': agg.volume
+        })
+    count += 1
+    print(f"Processed option: {option} ({count}/{len(options)})", end="\\r")
+
+# Create DataFrame in one go (much faster)
+option_df = pd.DataFrame(data)
+
+# Convert timestamps to Eastern Time
+option_df['datetime'] = pd.to_datetime(
+    option_df['timestamp'], 
+    unit='ms', 
+    utc=True
+).dt.tz_convert('America/New_York')
+
+# Join with SPY prices to get current underlying price at each timestamp
+option_df = option_df.merge(
+    minute_spy_df[['datetime', 'close']], 
+    left_on='datetime', 
+    right_on='datetime', 
+    how='left', 
+    suffixes=('', '_spy')
 )
 
-model.fit(X_train, y_train)
-preds = model.predict_proba(X_test)[:, 1]
+# Calculate ATM strike (rounded SPY price)
+option_df['ATM_strike'] = option_df['close_spy'].fillna(0).astype(int)
 
-# Evaluate
-auc = roc_auc_score(y_test, preds)
-brier = brier_score_loss(y_test, preds)
-print(f"ROC-AUC: {auc:.3f}  |  Brier: {brier:.3f}")
+# Filter to market hours
+option_df = option_df[
+    (option_df['datetime'].dt.time >= pd.to_datetime("09:30").time()) & 
+    (option_df['datetime'].dt.time <= pd.to_datetime("16:00").time())
+]
 
-# SHAP analysis on sample
-idx = np.random.choice(len(X_test), size=50000, replace=False)
-explainer = shap.TreeExplainer(model)
-shap_values = explainer.shap_values(X_test[idx])
+print(f"\\nTotal option observations: {len(option_df):,}")`
+    },
+    {
+      label: "5. Calculate Moneyness & Basic Features",
+      description: "Extract strike price, distance from ATM, and convert to cents",
+      code: `import numpy as np
 
-# Global importance
-shap.summary_plot(
-    shap_values, 
-    X_test[idx], 
-    feature_names=shap_feature_list
+# Extract strike price from option ticker
+# Format: O:SPY250217C00600000 -> strike = 600
+option_df['strike_price'] = option_df['option'].str.extract(r'(\\d{8})')[0].astype(str).str[2:5].astype(int)
+
+# Distance from ATM (negative = ITM, positive = OTM)
+option_df['dist_from_ATM'] = (option_df['strike_price'] - option_df['ATM_strike']) / option_df['ATM_strike']
+
+# Convert to cents for easier feature engineering
+option_df['close_in_cents'] = option_df['close'] * 100
+
+# Call = 1, Put = -1 (for side-aware features)
+option_df['side'] = option_df['option'].apply(lambda x: 1 if 'C' in x else -1)
+
+print(f"Mean distance from ATM: {option_df['dist_from_ATM'].mean():.4f}")
+print(f"Std distance from ATM: {option_df['dist_from_ATM'].std():.4f}")`
+    },
+    {
+      label: "6. Rolling Window Features (Leak-Free)",
+      description: "Create rolling statistics over multiple time windows without lookahead bias",
+      code: `import numpy as np
+import pandas as pd
+from concurrent.futures import ProcessPoolExecutor, as_completed
+import multiprocessing
+
+# Multiple time windows to capture short-term and long-term patterns
+windows = [5, 10, 15, 30, 60, 120]  # minutes
+n_workers = max(1, multiprocessing.cpu_count() - 3)
+
+option_df = option_df.sort_values(['option', 'datetime']).copy()
+
+
+def process_option(args):
+    """
+    Process a single option contract to create rolling window features.
+    All features are calculated WITHOUT lookahead bias (only using past data).
+    """
+    option, df = args
+    df = df.sort_values('datetime').reset_index(drop=True)
+
+    # Cumulative day range (where are we in today's price range?)
+    df['cum_min'] = df['close_in_cents'].cummin()
+    df['cum_max'] = df['close_in_cents'].cummax()
+
+    df['pos_in_day_range'] = (
+        (df['close_in_cents'] - df['cum_min']) /
+        (df['cum_max'] - df['cum_min'])
+    ).fillna(0)
+
+    # For each time window
+    for window in windows:
+
+        # --- PRICE N MINUTES AGO (LEAK-FREE) ---
+        target_times = df['datetime'] - pd.Timedelta(minutes=window)
+        idx = df['datetime'].searchsorted(target_times, side='right') - 1
+        valid_mask = idx >= 0
+
+        past_prices = np.full(len(df), np.nan)
+        past_prices[valid_mask] = df.loc[idx[valid_mask], 'close_in_cents'].values
+
+        df[f'close_{window}m_ago'] = past_prices
+
+        # Price change over window
+        df[f'price_change_{window}m'] = (
+            df['close_in_cents'] - df[f'close_{window}m_ago']
+        )
+
+        # --- ROLLING STATISTICS (MIN, MAX, STD) ---
+        rolling_min = []
+        rolling_max = []
+        rolling_std = []
+
+        for i in range(len(df)):
+            start_time = df.loc[i, 'datetime'] - pd.Timedelta(minutes=window)
+
+            window_slice = df.loc[
+                (df['datetime'] >= start_time) &
+                (df['datetime'] <= df.loc[i, 'datetime']),
+                'close_in_cents'
+            ]
+
+            rolling_min.append(window_slice.min())
+            rolling_max.append(window_slice.max())
+            rolling_std.append(window_slice.std())
+
+        df[f'rolling_min_{window}m'] = rolling_min
+        df[f'rolling_max_{window}m'] = rolling_max
+        df[f'rolling_std_{window}m'] = rolling_std
+
+        # Position within rolling range (mean reversion indicator)
+        df[f'pos_in_rolling_range_{window}m'] = (
+            (df['close_in_cents'] - df[f'rolling_min_{window}m']) /
+            (df[f'rolling_max_{window}m'] - df[f'rolling_min_{window}m'])
+        ).fillna(0)
+
+        # Directional volatility (signed standard deviation)
+        df[f'directional_rolling_std_{window}m'] = (
+            df[f'rolling_std_{window}m'] *
+            np.sign(df[f'price_change_{window}m'])
+        )
+
+    df.drop(columns=['cum_min', 'cum_max'], inplace=True)
+
+    return df
+
+
+# Process all options in parallel
+groups = list(option_df.groupby('option'))
+
+results = []
+total = len(groups)
+
+with ProcessPoolExecutor(max_workers=n_workers) as executor:
+    futures = {executor.submit(process_option, g): g[0] for g in groups}
+
+    for i, future in enumerate(as_completed(futures)):
+        results.append(future.result())
+        print(f"Processed {i+1}/{total}", end="\\r")
+
+option_df = pd.concat(results, ignore_index=True)
+
+print("\\nDone ✅ Multithreaded + Leakage Free")`
+    },
+    {
+      label: "7. Create Target Variable",
+      description: "Label: will this option be worth MORE at 3:30pm than it is now?",
+      code: `import pandas as pd
+import numpy as np
+
+target_time = pd.to_datetime("15:30").time()
+
+option_df = option_df.sort_values(['option', 'datetime']).copy()
+option_df['date'] = option_df['datetime'].dt.date
+option_df['time'] = option_df['datetime'].dt.time
+
+
+def assign_price_at_target(group):
+    """
+    For each option/day, find the price at 3:30pm (or closest timestamp).
+    """
+    # Compute absolute time difference in seconds
+    time_diff = (
+        pd.to_datetime(group['time'].astype(str)) -
+        pd.to_datetime(str(target_time))
+    ).abs()
+
+    idx = time_diff.idxmin()
+    price = group.loc[idx, 'close_in_cents']
+
+    group['price_at_15_30'] = price
+    return group
+
+
+option_df = (
+    option_df
+    .groupby(['option', 'date'], group_keys=False)
+    .apply(assign_price_at_target)
+)
+
+option_df.drop(columns=['time'], inplace=True)
+
+# Create binary target: 1 if price goes UP by 3:30pm, 0 if DOWN
+option_df['profit_15_30'] = (option_df['price_at_15_30'] - option_df['close_in_cents'] > 0).astype(int)
+
+# Calculate percentage gain (for analysis)
+option_df['pct_gain_15_30'] = (
+    (option_df['price_at_15_30'] - option_df['close_in_cents']) / 
+    option_df['close_in_cents']
+)
+
+# Remove any rows with missing data
+option_df = option_df.dropna()
+
+# Only use data BEFORE 3:30pm (can't trade at target time)
+option_df = option_df[option_df['datetime'].dt.time <= pd.to_datetime("15:30").time()]
+
+print(f"\\nTarget distribution:")
+print(f"Profitable (1): {option_df['profit_15_30'].sum():,} ({option_df['profit_15_30'].mean():.1%})")
+print(f"Unprofitable (0): {(1-option_df['profit_15_30']).sum():,} ({(1-option_df['profit_15_30']).mean():.1%})")
+
+print("\\nDone ✅ Target variable created")`
+    },
+    {
+      label: "8. Add Time Features",
+      description: "Seconds since market open and until close (time of day matters)",
+      code: `# Create market open/close timestamps for each day
+option_df['open_datetime'] = (
+    option_df['datetime'].dt.normalize() + 
+    pd.Timedelta(hours=9, minutes=30)
+).dt.tz_convert('America/New_York')
+
+option_df['close_datetime'] = (
+    option_df['datetime'].dt.normalize() + 
+    pd.Timedelta(hours=16)
+).dt.tz_convert('America/New_York')
+
+# Calculate time features
+option_df['seconds_since_open'] = (
+    option_df['datetime'] - option_df['open_datetime']
+).dt.total_seconds()
+
+option_df['seconds_until_close'] = (
+    option_df['close_datetime'] - option_df['datetime']
+).dt.total_seconds()
+
+# Add year for walk-forward validation
+option_df['year'] = option_df['datetime'].dt.year
+
+print(f"Time features added. Data spans {option_df['year'].min()} to {option_df['year'].max()}")`
+    },
+    {
+      label: "9. Train XGBoost with Walk-Forward Validation",
+      description: "Train on past years, test on future year (realistic backtesting)",
+      code: `import pandas as pd
+import numpy as np
+from xgboost import XGBClassifier
+from sklearn.metrics import accuracy_score, roc_auc_score
+
+
+# Define feature columns
+train_columns = [
+    'dist_from_ATM', 'close_in_cents', 'pos_in_day_range', 
+    'close_5m_ago', 'price_change_5m', 'rolling_min_5m', 'rolling_max_5m', 'rolling_std_5m',
+    'pos_in_rolling_range_5m', 'directional_rolling_std_5m',
+    'close_10m_ago', 'price_change_10m', 'rolling_min_10m', 'rolling_max_10m', 'rolling_std_10m',
+    'pos_in_rolling_range_10m', 'directional_rolling_std_10m',
+    'close_15m_ago', 'price_change_15m', 'rolling_min_15m', 'rolling_max_15m', 'rolling_std_15m',
+    'pos_in_rolling_range_15m', 'directional_rolling_std_15m',
+    'close_30m_ago', 'price_change_30m', 'rolling_min_30m', 'rolling_max_30m', 'rolling_std_30m',
+    'pos_in_rolling_range_30m', 'directional_rolling_std_30m',
+    'close_60m_ago', 'price_change_60m', 'rolling_min_60m', 'rolling_max_60m', 'rolling_std_60m',
+    'pos_in_rolling_range_60m', 'directional_rolling_std_60m',
+    'close_120m_ago', 'price_change_120m', 'rolling_min_120m', 'rolling_max_120m', 'rolling_std_120m',
+    'pos_in_rolling_range_120m', 'directional_rolling_std_120m',
+    'seconds_since_open', 'seconds_until_close', 'side'
+]
+
+
+def walk_forward_xgb_classification(
+    option_df: pd.DataFrame,
+    train_cols: list,
+    target_col: str = 'profit_15_30',
+    year_col: str = "year"
+):
+    """
+    Walk-forward validation: train on past years, test on next year.
+    Simulates real trading where you can only use past data.
+    """
+    df = option_df.copy()
+    df = df.sort_values(year_col)
+
+    xgb_params = {
+        "n_estimators": 300,
+        "max_depth": 4,
+        "learning_rate": 0.05,
+        'min_child_weight': 15,
+        "subsample": 0.8,
+        "colsample_bytree": 0.8,
+        "random_state": 42,
+        "eval_metric": "logloss"
+    }
+
+    years = sorted(df[year_col].unique())
+    all_results = []
+
+    print("\\nWALK FORWARD TRAINING\\n" + "="*50)
+
+    for i in range(1, len(years)):
+        train_years = years[:i]
+        test_year = years[i]
+
+        train_df = df[df[year_col].isin(train_years)]
+        test_df = df[df[year_col] == test_year]
+
+        if train_df.empty or test_df.empty:
+            continue
+
+        X_train = train_df[train_cols]
+        y_train = train_df[target_col]
+
+        X_test = test_df[train_cols]
+        y_test = test_df[target_col]
+
+        model = XGBClassifier(**xgb_params)
+        model.fit(X_train, y_train)
+
+        preds = model.predict(X_test)
+        probs = model.predict_proba(X_test)[:, 1]
+
+        acc = accuracy_score(y_test, preds)
+        auc = roc_auc_score(y_test, probs)
+
+        print(f"\\nTrain Years: {train_years}")
+        print(f"Test Year: {test_year}")
+        print(f"Accuracy: {acc:.4f}")
+        print(f"AUC: {auc:.4f}")
+
+        fold_results = test_df.copy()
+        fold_results["prediction"] = preds
+        fold_results["probability"] = probs
+        fold_results["train_years"] = str(train_years)
+
+        all_results.append(fold_results)
+
+    results_df = pd.concat(all_results).sort_index()
+
+    print("\\n" + "="*50)
+    print("Overall OOS Performance")
+    print("="*50)
+
+    overall_acc = accuracy_score(results_df[target_col], results_df["prediction"])
+    overall_auc = roc_auc_score(results_df[target_col], results_df["probability"])
+
+    print(f"Overall Accuracy: {overall_acc:.4f}")
+    print(f"Overall AUC: {overall_auc:.4f}")
+    print("="*50)
+
+    return results_df
+
+
+# Run walk-forward validation
+res_df = walk_forward_xgb_classification(
+    option_df=option_df,
+    train_cols=train_columns,
+    target_col='profit_15_30',
+    year_col='year'
 )`
     },
     {
-      label: "Strategy Optimization & EV Analysis",
-      description:
-        "Calculate expected value by OTM strike and model confidence threshold",
-      code: `import pandas as pd
+      label: "10. Model Calibration Analysis",
+      description: "Verify predictions are accurate (if model says 60% chance, does it happen 60% of time?)",
+      code: `import matplotlib.pyplot as plt
+import numpy as np
+import pandas as pd
 
-# Assign confidence threshold buckets
-def assign_threshold_bucket(proba):
-    """Bucket predictions into 0.1-wide bins"""
-    return int(proba * 10) / 10
 
-df['thresh_hold_bucket'] = df['predicted_target_up'].apply(
-    assign_threshold_bucket
-)
+def plot_calibration_curve(res_df, n_bins=10):
+    """
+    Plot calibration curve showing how well predicted probabilities match observed frequencies.
+    Perfect calibration = diagonal line.
+    """
+    predicted = res_df['probability']
+    actual = res_df['profit_15_30']
 
-# Calculate gains
-df['pct_gain_eod'] = df['Deod'] / df['price']
+    df = pd.DataFrame({
+        "predicted": predicted,
+        "actual": actual
+    })
 
-# Get earliest trade each day per (OTM, threshold) combination
-grouped = df.sort_values("TTE", ascending=False)
-earliest = (
-    grouped
-    .groupby(['date', 'OTM', 'thresh_hold_bucket'], group_keys=False)
-    .head(1)
-)
+    # Create equal-width bins
+    df["bin"] = pd.cut(df["predicted"], bins=n_bins)
 
-# Calculate EV by strike and threshold
-ev_rows = []
+    # Aggregate statistics
+    calibration = df.groupby("bin").agg(
+        mean_predicted=("predicted", "mean"),
+        mean_actual=("actual", "mean"),
+        count=("actual", "size")
+    ).dropna()
 
-for otm in sorted(earliest['OTM'].unique()):
-    for thr in sorted(earliest['thresh_hold_bucket'].unique()):
-        sub = earliest[
-            (earliest['OTM'] == otm) & 
-            (earliest['thresh_hold_bucket'] == thr)
-        ]
-        if sub.empty:
-            continue
+    calibration["bin_center"] = calibration["mean_predicted"]
 
-        ev_rows.append({
-            'OTM': otm,
-            'threshold': thr,
-            'EV_pct_gain': sub['pct_gain_eod'].mean(),
-            'hit_rate': (sub['pct_gain_eod'] > 0).mean(),
-            'n_unique_days': sub['date'].nunique(),
-            'pct_days': sub['date'].nunique() / len(df['date'].unique()),
-            'avg_win': sub.loc[sub['pct_gain_eod'] > 0, 'pct_gain_eod'].mean(),
-            'avg_loss': sub.loc[sub['pct_gain_eod'] <= 0, 'pct_gain_eod'].mean(),
-            'med_win': sub.loc[sub['pct_gain_eod'] > 0, 'pct_gain_eod'].median(),
-            'med_loss': sub.loc[sub['pct_gain_eod'] <= 0, 'pct_gain_eod'].median(),
-        })
+    # Create figure with 2 subplots
+    fig, (ax1, ax2) = plt.subplots(
+        2, 1, figsize=(8, 10),
+        gridspec_kw={'height_ratios': [3, 1]}
+    )
 
-ev_results = (
-    pd.DataFrame(ev_rows)
-    .sort_values('EV_pct_gain', ascending=False)
-    .reset_index(drop=True)
-)
+    # Calibration Curve
+    ax1.plot(calibration["mean_predicted"],
+             calibration["mean_actual"],
+             marker='o',
+             linewidth=2,
+             label="Model Calibration")
 
-print("Top 10 Strategy Configurations by EV:")
-print(ev_results.head(10))`
+    ax1.plot([0, 1], [0, 1],
+             linestyle='--',
+             label="Perfect Calibration")
+
+    ax1.set_xlabel("Mean Predicted Probability")
+    ax1.set_ylabel("Observed Frequency")
+    ax1.set_title("Calibration Curve")
+    ax1.legend()
+    ax1.grid(alpha=0.3)
+
+    # Frequency Bars
+    ax2.bar(calibration["bin_center"],
+            calibration["count"],
+            width=1/n_bins * 0.9)
+
+    ax2.set_xlabel("Predicted Probability")
+    ax2.set_ylabel("Count")
+    ax2.set_title("Prediction Frequency by Bin")
+    ax2.grid(alpha=0.3)
+
+    plt.tight_layout()
+    plt.show()
+
+    return calibration
+
+
+calibration_df = plot_calibration_curve(res_df, n_bins=10)
+
+print(f"\\n{'='*60}")
+print(f"CALIBRATION ANALYSIS")
+print(f"{'='*60}")
+print(f"Mean predicted probability: {res_df['probability'].mean():.4f}")
+print(f"Actual win rate: {res_df['profit_15_30'].mean():.4f}")
+print(f"Calibration difference: {abs(res_df['probability'].mean() - res_df['profit_15_30'].mean()):.4f}")`
     },
     {
-      label: "Production Deployment to AWS S3",
-      description:
-        "Save predictions and deploy model to S3 for production inference",
-      code: `import boto3
-import botocore.exceptions
-from dotenv import load_dotenv
+      label: "11. Outlier Detection Strategy",
+      description: "Find unusually high probabilities compared to historical distribution for that strike",
+      code: `import numpy as np
 
-load_dotenv()
+res_df = res_df.sort_values('datetime').reset_index(drop=True)
 
-bucket_name = "option-model-predict-proba-profit"
-region = "us-east-1"
+# Track historical probabilities for each strike/side combination
+option_bin_proba = {}
+option_bin_profit = {}
+seen_days = {}
 
-# === CREATE S3 BUCKET ===
-s3 = boto3.client("s3")
+for i in range(len(res_df)):
 
-try:
-    if region == "us-east-1":
-        s3.create_bucket(Bucket=bucket_name)
+    row = res_df.loc[i]
+    
+    # Create side-aware moneyness bin
+    # Example: call 2% OTM = +2.0, put 2% OTM = -2.0
+    side_aware_atm = row['dist_from_ATM'] * row['side']
+    bin_key = round(side_aware_atm * 100, 1)
+    key = str(bin_key)
+
+    # ========================================
+    # CHECK OUTLIER USING ONLY PAST DATA
+    # ========================================
+    if key in option_bin_proba and len(option_bin_proba[key]) > 20:
+
+        past_mean = option_bin_proba[key].mean()
+        past_std  = option_bin_proba[key].std()
+
+        # If current probability is MORE THAN 1 STD above historical mean
+        if row['year'] != 2023:
+            if row['probability'] > past_mean + past_std:
+
+                print(f"High probability outlier at index {i} | bin {bin_key} | prob {row['probability']:.4f}")
+
+                # Track unique opportunities (only one trade per day per bin)
+                if row['date'] not in seen_days:
+                    seen_days[row['date']] = {}
+
+                if bin_key not in seen_days[row['date']]:
+                    seen_days[row['date']][bin_key] = True
+
+                    if key in option_bin_profit:
+                        option_bin_profit[key] = np.append(
+                            option_bin_profit[key],
+                            row['profit_15_30']
+                        )
+                    else:
+                        option_bin_profit[key] = np.array([row['profit_15_30']])
+
+    # ========================================
+    # UPDATE DISTRIBUTION AFTER CHECK
+    # ========================================
+    if key in option_bin_proba:
+        option_bin_proba[key] = np.append(option_bin_proba[key], row['probability'])
     else:
-        s3.create_bucket(
-            Bucket=bucket_name,
-            CreateBucketConfiguration={"LocationConstraint": region}
-        )
-    print(f"Bucket created: {bucket_name}")
-except botocore.exceptions.ClientError as e:
-    if e.response["Error"]["Code"] in (
-        "BucketAlreadyExists", "BucketAlreadyOwnedByYou"
-    ):
-        print(f"Bucket already exists: {bucket_name}")
-    else:
-        raise e
+        option_bin_proba[key] = np.array([row['probability']])
 
-# === SAVE PREDICTIONS AS PARQUET ===
-output_path = "option_model_predictions_v2.parquet"
+    print(i / len(res_df) * 100, end="\\r")
 
-test_df_2[[
-    'date', 'CorP', 'OTM', 'TTE', 'price', 
-    'DN5', 'DN10', 'DF5', 'DF10', 'Deod', 
-    'predicted_target_up'
-]].to_parquet(output_path, index=False)
+print("\\n\\nOutlier detection complete ✅")
 
-print("Local parquet file saved:", output_path)
+# Calculate win rate for outlier trades
+all_outlier_trades = []
+for key, profits in option_bin_profit.items():
+    all_outlier_trades.extend(profits)
 
-# === UPLOAD TO S3 ===
-key = "option_model_predictions_v2.parquet"
-s3.upload_file(output_path, bucket_name, key)
-
-print("Upload complete:", f"s3://{bucket_name}/{key}")
-
-# === DOWNLOAD FROM S3 (for verification) ===
-local_path = "downloaded_predictions_v2.parquet"
-s3.download_file(bucket_name, key, local_path)
-print("Downloaded and verified:", local_path)`
-    }
-  ],
-  plots: [
-    {
-      title: "Feature Importance (XGBoost)",
-      description: "Top 20 features ranked by XGBoost gain. Intraday positioning (dist_from_day_low, day_low_so_far) and momentum from open dominate predictive power.",
-      imageUrl: "https://via.placeholder.com/800x600?text=Feature+Importance"
-    },
-    {
-      title: "SHAP Global Importance",
-      description: "SHAP summary plot showing feature impact distribution. Intraday position features, moneyness interactions, and time-to-expiry dominate.",
-      imageUrl: "https://via.placeholder.com/800x600?text=SHAP+Summary"
-    },
-    {
-      title: "Model Calibration Curve",
-      description: "Predicted probabilities vs observed outcomes. Model shows good calibration across probability ranges, with slight overconfidence at extremes.",
-      imageUrl: "https://via.placeholder.com/800x600?text=Calibration+Curve"
-    },
-    {
-      title: "Confidence vs True Outcome by Bin",
-      description: "Model confidence buckets vs actual profitability rates. Higher confidence predictions show significantly better hit rates, validating model's probability estimates.",
-      imageUrl: "https://via.placeholder.com/800x600?text=Confidence+vs+Outcome"
-    },
-    {
-      title: "Expected Value by OTM & Threshold",
-      description: "Heatmap of EV across strike prices (OTM) and model confidence thresholds. Identifies optimal entry conditions for maximum expected return.",
-      imageUrl: "https://via.placeholder.com/800x600?text=EV+Heatmap"
-    },
-    {
-      title: "Statistical Validation",
-      description: "Paired t-test results showing model hit-rate significantly outperforms baseline (p < 0.001). Cohen's d indicates strong practical significance.",
-      imageUrl: "https://via.placeholder.com/800x600?text=Statistical+Tests"
+if all_outlier_trades:
+    win_rate = np.mean(all_outlier_trades)
+    print(f"\\nOutlier Strategy Results:")
+    print(f"Total trades: {len(all_outlier_trades)}")
+    print(f"Win rate: {win_rate:.2%}")
+    print(f"Expected edge: {win_rate - 0.5:.2%} above 50%")`
     }
   ]
 }

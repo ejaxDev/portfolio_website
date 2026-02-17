@@ -63,13 +63,13 @@ const Home: React.FC = () => {
                   Live Trading Framework
                 </h3>
                 <p className="text-slate-300 text-sm">
-                  Built a Python-based automated trading framework with real-time Tastytrade dxFeed WebSocket
-                  data streaming, pluggable ML model integration, and Alpaca API order execution.
+                  Built a live Python trading framework for SPY options with real-time Massive WebSocket (Polygon) data streaming, 
+                  Tastytrade API for options pricing, pluggable ML model integration, and Alpaca API order execution.
                 </p>
                 <div className="flex gap-2 flex-wrap pt-2">
                   <span className="px-3 py-1 bg-blue-500/20 text-blue-300 rounded-full text-xs">Python</span>
+                  <span className="px-3 py-1 bg-blue-500/20 text-blue-300 rounded-full text-xs">WebSocket</span>
                   <span className="px-3 py-1 bg-blue-500/20 text-blue-300 rounded-full text-xs">Asyncio</span>
-                  <span className="px-3 py-1 bg-blue-500/20 text-blue-300 rounded-full text-xs">WebSockets</span>
                   <span className="px-3 py-1 bg-blue-500/20 text-blue-300 rounded-full text-xs">Alpaca API</span>
                 </div>
                 <Link
@@ -91,14 +91,15 @@ const Home: React.FC = () => {
                   NFL Rushing Yards Prediction
                 </h3>
                 <p className="text-slate-300 text-sm">
-                  Developed an XGBoost regression pipeline using historical NFL data, engineered
-                  rolling workload and efficiency features, and evaluated performance on
-                  out-of-sample seasons.
+                  Built an end-to-end XGBoost pipeline to predict NFL rushing yards with multi-dimensional 
+                  feature engineering across player performance, defensive matchups, team context, workload 
+                  competition, and injury impact modeling.
                 </p>
                 <div className="flex gap-2 flex-wrap pt-2">
                   <span className="px-3 py-1 bg-cyan-500/20 text-cyan-300 rounded-full text-xs">Python</span>
                   <span className="px-3 py-1 bg-cyan-500/20 text-cyan-300 rounded-full text-xs">XGBoost</span>
-                  <span className="px-3 py-1 bg-cyan-500/20 text-cyan-300 rounded-full text-xs">Feature Engineering</span>
+                  <span className="px-3 py-1 bg-cyan-500/20 text-cyan-300 rounded-full text-xs">Pandas</span>
+                  <span className="px-3 py-1 bg-cyan-500/20 text-cyan-300 rounded-full text-xs">Scikit-learn</span>
                 </div>
                 <Link
                   to="/projects/project-demo/1"

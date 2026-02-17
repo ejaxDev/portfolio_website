@@ -13,7 +13,7 @@ const NavBar: React.FC = () => {
   };
 
   return (
-    <nav className="bg-gradient-to-r from-slate-900 to-slate-800 fixed w-full z-20 top-0 border-b border-slate-700">
+    <nav className="bg-gradient-to-r from-slate-900 to-slate-800 fixed w-full z-20 top-0">
       <div className="max-w-7xl flex items-center justify-between mx-auto px-4 py-4">
         {/* Logo */}
         <Link to="/" className="flex items-center space-x-2 sm:space-x-3 hover:opacity-80 transition-opacity" onClick={closeMenu}>
