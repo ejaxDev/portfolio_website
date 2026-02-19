@@ -22,7 +22,7 @@ const Projects: React.FC = () => {
       github: '#',
       demo: 'project-demo/1',
       highlights: [
-        '10 modular code sections covering full ML pipeline + betting strategy',
+        'Complete ML pipeline with betting strategy implementation',
         'Multi-dimensional feature engineering (player, defense, game script)',
         'Strength-of-schedule adjusted defensive metrics',
         'Workload competition and injury impact modeling',
@@ -46,7 +46,7 @@ const Projects: React.FC = () => {
       github: '#',
       demo: 'project-demo/2',
       highlights: [
-        '11 modular code sections for easy navigation',
+        'Clean architecture with organized components',
         'Real-time Massive WebSocket for SPY data streaming (Polygon)',
         'Async event loop with concurrent task management',
         'Pluggable strategy architecture with ML model support',
@@ -70,7 +70,7 @@ const Projects: React.FC = () => {
       github: '#',
       demo: 'project-demo/3',
       highlights: [
-        '11 modular code sections covering full ML pipeline',
+        'Complete ML pipeline implementation',
         'Multi-timeframe ATR analysis (5, 30, 60, 120 minute windows)',
         'VWAP distance metrics with rolling statistics',
         'Parallel label generation with ThreadPoolExecutor (8 workers)',
@@ -117,7 +117,7 @@ const Projects: React.FC = () => {
       github: '#',
       demo: 'project-demo/5',
       highlights: [
-        '11 modular sections: data fetching → features → labeling → training → calibration → deployment',
+        'Complete workflow: data fetching → features → labeling → training → calibration → deployment',
         'Parallel data fetching with ThreadPoolExecutor for thousands of option contracts',
         'Multi-window features across 6 timeframes (5min, 10min, 15min, 30min, 60min, 120min)',
         'Walk-forward validation - train on past years, test on future (no peeking)',

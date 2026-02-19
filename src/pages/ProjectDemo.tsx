@@ -1,7 +1,6 @@
 // src/pages/ProjectDemo.tsx
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
-import CodeBlock from '../components/CodeBlock';
 import { trackProjectView } from '../utils/analytics';
 
 import { PlotData } from "../types/projectDemo"
@@ -11,8 +10,6 @@ const ProjectDemo: React.FC = () => {
   const { projectId } = useParams<{ projectId: string }>();
   const [selectedImage, setSelectedImage] = useState<PlotData | null>(null);
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
-  const codeSampleRefs = useRef<{ [key: string]: HTMLDivElement | null }>({});
-  const visualizationsRef = useRef<HTMLDivElement | null>(null);
 
   // Project demo data with code samples and plots
   const demo = projectRegistry[projectId || ''];
@@ -24,22 +21,7 @@ const ProjectDemo: React.FC = () => {
     }
   }, [demo]);
 
-  const scrollToSection = (label: string) => {
-    let element = codeSampleRefs.current[label];
-    if (label === 'Visualizations & Results') {
-      element = visualizationsRef.current;
-    }
-    if (element) {
-      const offset = 80; // Offset for fixed header if any
-      const elementPosition = element.getBoundingClientRect().top;
-      const offsetPosition = elementPosition + window.pageYOffset - offset;
 
-      window.scrollTo({
-        top: offsetPosition,
-        behavior: 'smooth'
-      });
-    }
-  };
 
   if (!demo) {
     return (
@@ -88,64 +70,30 @@ const ProjectDemo: React.FC = () => {
             ← Back to Projects
           </Link>
           <h1 className="text-5xl md:text-6xl font-bold text-white mb-4">{demo.title}</h1>
-          <p className="text-xl text-slate-300">{demo.description}</p>
+          <p className="text-xl text-slate-300 mb-6">{demo.description}</p>
+          {demo.githubUrl && (
+            <a
+              href={demo.githubUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-semibold transition-colors"
+            >
+              <svg className="w-5 h-5 mr-2" fill="currentColor" viewBox="0 0 20 20">
+                <path fillRule="evenodd" d="M10 0C4.477 0 0 4.484 0 10.017c0 4.425 2.865 8.18 6.839 9.504.5.092.682-.217.682-.483 0-.237-.008-.868-.013-1.703-2.782.605-3.369-1.343-3.369-1.343-.454-1.158-1.11-1.466-1.11-1.466-.908-.62.069-.608.069-.608 1.003.07 1.531 1.032 1.531 1.032.892 1.53 2.341 1.088 2.91.832.092-.647.35-1.088.636-1.338-2.22-.253-4.555-1.113-4.555-4.951 0-1.093.39-1.988 1.029-2.688-.103-.253-.446-1.272.098-2.65 0 0 .84-.27 2.75 1.026A9.564 9.564 0 0110 4.844c.85.004 1.705.115 2.504.337 1.909-1.296 2.747-1.027 2.747-1.027.546 1.379.203 2.398.1 2.651.64.7 1.028 1.595 1.028 2.688 0 3.848-2.339 4.695-4.566 4.942.359.31.678.921.678 1.856 0 1.338-.012 2.419-.012 2.747 0 .268.18.58.688.482A10.019 10.019 0 0020 10.017C20 4.484 15.522 0 10 0z" clipRule="evenodd" />
+              </svg>
+              View Source Code
+            </a>
+          )}
         </div>
       </section>
 
-      {/* Main Content with Sidebar Navigation */}
+      {/* Main Content */}
       <section className="py-20 px-4 sm:px-6 lg:px-8">
-        <div className="max-w-7xl mx-auto flex flex-col lg:flex-row gap-8">
-          {/* Sticky Sidebar Navigation - Left Side */}
-          {demo.codeSamples && demo.codeSamples.length > 0 && (
-            <div className="lg:w-64 flex-shrink-0">
-              <div className="lg:sticky lg:top-8">
-                <h3 className="text-lg font-semibold text-slate-400 mb-4">Jump to Section:</h3>
-                <div className="flex flex-col gap-2">
-                  {demo.codeSamples.map((sample, idx) => (
-                    <button
-                      key={idx}
-                      onClick={() => scrollToSection(sample.label)}
-                      className="px-4 py-2 bg-blue-500/20 hover:bg-blue-500/30 text-blue-400 rounded-lg border border-blue-500/30 hover:border-blue-400 transition-all font-medium text-left text-sm"
-                    >
-                      {sample.label}
-                    </button>
-                  ))}
-                  {demo.plots && demo.plots.length > 0 && (
-                    <button
-                      onClick={() => scrollToSection('Visualizations & Results')}
-                      className="px-4 py-2 bg-blue-500/20 hover:bg-blue-500/30 text-blue-400 rounded-lg border border-blue-500/30 hover:border-blue-400 transition-all font-medium text-left text-sm"
-                    >
-                      Visualizations & Results
-                    </button>
-                  )}
-                </div>
-              </div>
-            </div>
-          )}
-
-          {/* Main Content Area - Right Side */}
-          <div className="flex-1 min-w-0">
-            {/* Code Samples Section */}
-            <div className="mb-20">
-              <h2 className="text-4xl font-bold text-white mb-12">Code Samples</h2>
-              {demo.codeSamples.map((sample, idx) => (
-                <div 
-                  key={idx} 
-                  ref={(el) => { codeSampleRefs.current[sample.label] = el; }}
-                >
-                  <CodeBlock
-                    label={sample.label}
-                    description={sample.description}
-                    code={sample.code}
-                  />
-                </div>
-              ))}
-            </div>
-
-            {/* Plots Section */}
-            {demo.plots && demo.plots.length > 0 && (
-            <div ref={visualizationsRef}>
-              <h2 className="text-4xl font-bold text-white mb-12">Visualizations & Results</h2>
+        <div className="max-w-6xl mx-auto">
+          {/* Plots Section */}
+          {demo.plots && demo.plots.length > 0 && (
+            <div>
+              <h2 className="text-4xl font-bold text-white mb-12">Results & Visualizations</h2>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                 {demo.plots.map((plot, idx) => (
                   <div
@@ -165,14 +113,13 @@ const ProjectDemo: React.FC = () => {
                     </div>
                     <div className="p-6">
                       <h3 className="text-xl font-bold text-white mb-2">{plot.title}</h3>
-                          <div className="text-slate-300">{plot.description}</div>
+                      <div className="text-slate-300">{plot.description}</div>
                     </div>
                   </div>
                 ))}
               </div>
             </div>
-            )}
-          </div>
+          )}
         </div>
       </section>
 

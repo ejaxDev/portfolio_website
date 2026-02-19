@@ -1,10 +1,5 @@
 import React from "react";
 
-export interface CodeSample {
-  label: string
-  description: string
-  code: string
-}
 export interface ImageVariant {
   url: string;
   label: string;
@@ -21,7 +16,7 @@ export interface ProjectDemoData {
   id: string
   title: string
   description: string
-  codeSamples: CodeSample[]
+  githubUrl?: string
   plots?: PlotData[]
 }
 
