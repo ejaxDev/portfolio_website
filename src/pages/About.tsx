@@ -57,12 +57,10 @@ const About: React.FC = () => {
                 <a href="https://www.linkedin.com/in/eric-jackson27" className="w-12 h-12 bg-slate-700 hover:bg-blue-500 rounded-lg flex items-center justify-center transition-colors text-white text-sm font-bold">
                   in
                 </a>
-                <a href="#" className="w-12 h-12 bg-slate-700 hover:bg-blue-500 rounded-lg flex items-center justify-center transition-colors text-white text-sm font-bold">
+                <a href="https://github.com/ejaxDev" className="w-12 h-12 bg-slate-700 hover:bg-blue-500 rounded-lg flex items-center justify-center transition-colors text-white text-sm font-bold">
                   GH
                 </a>
-                <a href="#" className="w-12 h-12 bg-slate-700 hover:bg-blue-500 rounded-lg flex items-center justify-center transition-colors text-white">
-                  ✉
-                </a>
+                
               </div>
             </div>
 
