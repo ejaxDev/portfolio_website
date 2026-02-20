@@ -133,7 +133,7 @@ const About: React.FC = () => {
             <div className="bg-slate-700/50 rounded-lg p-8 border border-slate-600 hover:border-blue-400 transition-colors">
               <h3 className="text-2xl font-bold text-blue-400 mb-4">Languages</h3>
               <div className="space-y-2">
-                {['Python', 'SQL', 'C++', 'C', 'JavaScript', 'TypeScript'].map((skill) => (
+                {['Python', 'SQL', 'C++', 'C', 'TypeScript'].map((skill) => (
                   <div key={skill} className="flex items-center gap-2">
                     <span className="w-2 h-2 bg-blue-400 rounded-full"></span>
                     <span className="text-slate-300">{skill}</span>
@@ -194,18 +194,6 @@ const About: React.FC = () => {
               </div>
             </div>
 
-            {/* Databases */}
-            <div className="bg-slate-700/50 rounded-lg p-8 border border-slate-600 hover:border-pink-400 transition-colors">
-              <h3 className="text-2xl font-bold text-pink-400 mb-4">Databases</h3>
-              <div className="space-y-2">
-                {['Amazon Redshift', 'SQL Databases', 'Firebase'].map((skill) => (
-                  <div key={skill} className="flex items-center gap-2">
-                    <span className="w-2 h-2 bg-pink-400 rounded-full"></span>
-                    <span className="text-slate-300">{skill}</span>
-                  </div>
-                ))}
-              </div>
-            </div>
           </div>
         </div>
       </section>
