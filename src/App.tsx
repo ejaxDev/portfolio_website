@@ -22,7 +22,7 @@ const AppContent: React.FC = () => {
   return (
     <>
       <NavBar />
-      <div className="pt-16 md:pt-12">
+      <div className="pt-8 md:pt-12">
         <Routes>
           <Route path="" element={<Home />} />
           <Route path="about" element={<About />} />
