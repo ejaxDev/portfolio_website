@@ -19,7 +19,7 @@ const Projects: React.FC = () => {
         { label: 'ROC AUC', value: '0.563'}
       ],
       image: '📊',
-      github: '#',
+      github: 'https://github.com/ejaxDev/rush_yard_model',
       demo: 'project-demo/1',
       highlights: [
         'Complete ML pipeline with betting strategy implementation',
@@ -43,7 +43,7 @@ const Projects: React.FC = () => {
         {label: "Expected Value", value: '5.5% return per trade'}
       ],
       image: '📈',
-      github: '#',
+      github: 'https://github.com/ejaxDev/big_movement_model',
       demo: 'project-demo/2',
       highlights: [
         'Complete ML pipeline implementation',
@@ -67,7 +67,7 @@ const Projects: React.FC = () => {
         { label: 'Build Tool', value: 'Vite' }
       ],
       image: '💼',
-      github: '#',
+      github: 'https://github.com/ejaxDev/portfolio_website',
       demo: null,
       highlights: [
         'Responsive design for all devices',
@@ -90,7 +90,7 @@ const Projects: React.FC = () => {
         {label: 'Overall Accuracy', value: '76.52%'}
       ],
       image: '💰',
-      github: '#',
+      github: 'https://github.com/ejaxDev/option_model',
       demo: 'project-demo/4',
       highlights: [
         'Complete workflow: data fetching → features → labeling → training → calibration → deployment',

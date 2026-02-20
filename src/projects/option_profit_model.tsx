@@ -4,7 +4,7 @@ export const optionProfitModel: ProjectDemoData = {
   id: "5",
   title: "SPY Options Profit Prediction",
   description: 'Predicts if buying a SPY option will be profitable by 3:30pm market close. The model scans option strikes within ±2% of current SPY price throughout the trading day, using rolling price statistics across multiple timeframes (5min to 2hr windows) to identify high-confidence entry points. Strategy employs relative confidence scoring that accounts for strike distance from current price.',
-  githubUrl: "https://github.com/yourusername/spy-options-prediction",
+  githubUrl: "https://github.com/ejaxDev/option_model",
   plots: [
     {
       title: 'Model Calibration',

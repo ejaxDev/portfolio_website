@@ -4,7 +4,7 @@ export const rushYardProject: ProjectDemoData = {
   id: "1",
   title: "NFL Rushing Yards Prediction",
   description: "End-to-end XGBoost pipeline predicting RB rushing yards with multi-dimensional feature engineering across player performance, defensive matchups, team context, and workload competition. Features comprehensive injury modeling, game script analysis, and betting line classification with edge detection.",
-  githubUrl: "https://github.com/yourusername/nfl-rushing-prediction",
+  githubUrl: "https://github.com/ejaxDev/rush_yard_model",
   plots: [
     {
       title: 'Betting Strategy Performance',
