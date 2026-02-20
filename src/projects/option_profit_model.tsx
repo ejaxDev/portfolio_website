@@ -13,7 +13,7 @@ export const optionProfitModel: ProjectDemoData = {
     },
     {
       title: 'Trading Performance by Strike Distance',
-      description: 'Strategy performance across different option strike prices relative to SPY\'s current price. The analysis reveals optimal strike selection zones, with near-the-money options (-0.5% to +0.5% OTM) showing the strongest performance. This demonstrates the model\'s ability to balance risk-reward ratios across the options chain. Note: Backtest assumes theoretical execution without slippage costs.',
+      description: 'Strategy performance across different option strike prices relative to SPY\'s current price. The analysis reveals optimal strike selection zones, with near-the-money options (-0.5% to +0.5% OTM) showing the strongest performance. Note: Backtest assumes theoretical execution without slippage costs.',
       imageUrl: '/portfolio_website/option_model_results.png'
     }
   ]
