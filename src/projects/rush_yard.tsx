@@ -7,19 +7,49 @@ export const rushYardProject: ProjectDemoData = {
   githubUrl: "https://github.com/yourusername/nfl-rushing-prediction",
   plots: [
     {
-      title: 'Season-by-Season Performance',
-      description: 'MAE, RMSE, and R² metrics across 2019-2023 test seasons',
-      imageUrl: 'https://via.placeholder.com/600x400?text=Season+Performance'
+      title: 'Betting Strategy Performance',
+      description: 'Simulation showing how the model could be used for sports betting. When model predictions significantly differ from Vegas odds, this indicates potential betting opportunities. Chart displays cumulative profits over two seasons using this edge detection strategy.',
+      imageUrl: '/portfolio_website/rush_yard_equityCurve.png'
     },
     {
-      title: 'Prediction vs Actual Distribution',
-      description: 'Scatter plot showing model calibration and residual patterns',
-      imageUrl: 'https://via.placeholder.com/600x400?text=Prediction+Distribution'
+      title: 'Model Calibration',
+      description: 'Analysis showing how reliable the model\'s probability predictions are. When the model says there\'s a 60% chance of something happening, it should actually happen about 60% of the time. The curve is monotonic and not perfectly calibrated, but this is expected when predicting a difficult target variable like NFL rushing yards. The histogram shows the distribution of prediction confidence levels.',
+      imageUrl: '/portfolio_website/rush_yard_calib.png'
     },
     {
-      title: 'Feature Importance Rankings',
-      description: 'Top 20 features by permutation importance with confidence intervals',
-      imageUrl: 'https://via.placeholder.com/600x400?text=Feature+Importance'
+      title: 'Player-Specific Predictions',
+      description: 'Model predictions for different NFL running backs showing how performance varies across players. Navigate through the gallery to see individual prediction charts for each player, demonstrating the model\'s ability to capture unique player patterns and tendencies. Color-coded bars show prediction accuracy, with green indicating correct predictions and red showing misses.',
+      imageUrl: '/portfolio_website/rush_yard_cmc.png',
+      imageUrls: [
+        {
+          url: '/portfolio_website/rush_yard_cmc.png',
+          label: 'Christian McCaffrey'
+        },
+        {
+          url: '/portfolio_website/rush_yard_kingHen.png',
+          label: 'Derrick Henry'
+        },
+        {
+          url: '/portfolio_website/rush_yard_josh_jacobs.png',
+          label: 'Josh Jacobs'
+        },
+        {
+          url: '/portfolio_website/rush_yard_JT.png',
+          label: 'Jonathan Taylor'
+        },
+        {
+          url: '/portfolio_website/rush_yard_blake_corum.png',
+          label: 'Blake Corum'
+        },
+        {
+          url: '/portfolio_website/rush_yard_jeanty.png',
+          label: 'Ashton Jeanty'
+        },
+        {
+          url: '/portfolio_website/rush_yard_RJ_Harv.png',
+          label: 'RJ Harvey'
+        }
+      ]
     }
   ]
 }

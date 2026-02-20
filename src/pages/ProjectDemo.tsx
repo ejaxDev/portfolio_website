@@ -126,27 +126,28 @@ const ProjectDemo: React.FC = () => {
       {/* Image Lightbox Modal */}
       {selectedImage && (
         <div
-          className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4"
+          className="fixed inset-0 bg-black/90 flex items-center justify-center z-50 p-2"
           onClick={() => setSelectedImage(null)}
         >
           <div
-            className="relative max-w-4xl w-full max-h-[90vh] flex flex-col"
+            className="relative w-[98vw] h-[98vh] flex flex-col"
             onClick={(e) => e.stopPropagation()}
           >
             {/* Close Button */}
             <button
               onClick={() => setSelectedImage(null)}
-              className="absolute top-4 right-4 bg-red-500 hover:bg-red-600 text-white rounded-full w-10 h-10 flex items-center justify-center transition-colors z-10 text-xl font-bold"
+              className="absolute top-2 right-2 bg-red-500 hover:bg-red-600 text-white rounded-full w-10 h-10 flex items-center justify-center transition-colors z-10 text-xl font-bold"
             >
               ✕
             </button>
 
             {/* Image */}
-            <div className="bg-slate-900 rounded-lg overflow-hidden flex-1 flex items-center justify-center relative">
+            <div className="bg-slate-900 rounded-lg overflow-hidden flex-1 flex items-center justify-center relative" style={{ minHeight: 'calc(98vh - 120px)' }}>
               <img
                 src={getCurrentImageUrl()}
                 alt={selectedImage.title}
-                className="w-full h-full object-contain"
+                className="max-w-full max-h-full object-contain"
+                style={{ maxHeight: 'calc(98vh - 140px)' }}
               />
 
               {/* Navigation Arrows - Only show if multiple images */}
@@ -154,19 +155,19 @@ const ProjectDemo: React.FC = () => {
                 <>
                   <button
                     onClick={handlePrevImage}
-                    className="absolute left-4 top-1/2 -translate-y-1/2 bg-blue-500 hover:bg-blue-600 text-white rounded-full w-12 h-12 flex items-center justify-center transition-colors text-2xl font-bold z-20"
+                    className="absolute left-2 top-1/2 -translate-y-1/2 bg-blue-500 hover:bg-blue-600 text-white rounded-full w-12 h-12 flex items-center justify-center transition-colors text-2xl font-bold z-20"
                   >
                     ‹
                   </button>
                   <button
                     onClick={handleNextImage}
-                    className="absolute right-4 top-1/2 -translate-y-1/2 bg-blue-500 hover:bg-blue-600 text-white rounded-full w-12 h-12 flex items-center justify-center transition-colors text-2xl font-bold z-20"
+                    className="absolute right-2 top-1/2 -translate-y-1/2 bg-blue-500 hover:bg-blue-600 text-white rounded-full w-12 h-12 flex items-center justify-center transition-colors text-2xl font-bold z-20"
                   >
                     ›
                   </button>
 
                   {/* Image Counter */}
-                  <div className="absolute bottom-4 left-4 bg-black/60 px-4 py-2 rounded-lg text-white text-sm font-semibold">
+                  <div className="absolute bottom-2 left-2 bg-black/60 px-3 py-1 rounded-lg text-white text-sm font-semibold">
                     {currentImageIndex + 1} / {selectedImage.imageUrls.length}
                   </div>
                 </>
@@ -174,12 +175,12 @@ const ProjectDemo: React.FC = () => {
             </div>
 
             {/* Info */}
-            <div className="bg-slate-800 p-6 rounded-b-lg border-t border-slate-700">
-              <h3 className="text-2xl font-bold text-white mb-2">
+            <div className="bg-slate-800 p-4 rounded-b-lg border-t border-slate-700 flex-shrink-0 max-h-[100px] overflow-y-auto">
+              <h3 className="text-lg font-bold text-white mb-1">
                 {selectedImage.title}
-                {getCurrentImageLabel() && <span className="text-blue-400 text-lg ml-2">— {getCurrentImageLabel()}</span>}
+                {getCurrentImageLabel() && <span className="text-blue-400 text-base ml-2">— {getCurrentImageLabel()}</span>}
               </h3>
-                    <div className="text-slate-300">{selectedImage.description}</div>
+              <div className="text-slate-300 text-sm">{selectedImage.description}</div>
             </div>
           </div>
         </div>

@@ -11,12 +11,12 @@ const Projects: React.FC = () => {
       title: 'Sports Analytics Predictions',
       category: 'machine-learning',
       shortDesc: 'NFL rushing yards prediction using XGBoost',
-      fullDesc: 'Built an end-to-end XGBoost pipeline to predict NFL rushing yards with multi-dimensional feature engineering across player performance, defensive matchups, team context, workload competition, and injury impact modeling.',
+      fullDesc: 'Built an end-to-end XGBoost pipeline to predict NFL rushing yards with multi-dimensional feature engineering across player performance, defensive matchups, team context, workload competition, and injury impact modeling. One model for regression (yardage prediction) and one for classification (over/under betting with edge detection).',
       technologies: ['Python', 'XGBoost', 'Pandas', 'Scikit-learn'],
       metrics: [
-        { label: 'RMSE', value: '28.44 yards' },
+        { label: 'RMSE', value: '28.87 yards' },
         { label: 'R² Score', value: '0.39' },
-        { label: 'Time Period', value: '2019-2023' }
+        { label: 'ROC AUC', value: '0.563'}
       ],
       image: '📊',
       github: '#',
@@ -32,43 +32,19 @@ const Projects: React.FC = () => {
     },
     {
       id: 2,
-      title: 'Live Trading Framework',
-      category: 'systems-engineering',
-      shortDesc: 'Automated intraday SPY options trading framework',
-      fullDesc: 'Built a live Python trading framework for SPY options with real-time Massive WebSocket (Polygon) data streaming for SPY, Tastytrade API for options pricing, pluggable ML model integration, Alpaca API order execution, and automated daily shutdown at market close.',
-      technologies: ['Python', 'WebSocket', 'Alpaca API', 'Asyncio', 'Docker'],
-      metrics: [
-        { label: 'Data Source', value: 'Massive (Polygon)' },
-        { label: 'Execution', value: 'Alpaca API' },
-        { label: 'Architecture', value: 'Async/Event-driven' }
-      ],
-      image: '⚙️',
-      github: '#',
-      demo: 'project-demo/2',
-      highlights: [
-        'Clean architecture with organized components',
-        'Real-time Massive WebSocket for SPY data streaming (Polygon)',
-        'Async event loop with concurrent task management',
-        'Pluggable strategy architecture with ML model support',
-        'Tastytrade API for options chain data and pricing',
-        'Alpaca API for order execution with position tracking'
-      ]
-    },
-    {
-      id: 3,
       title: 'Volatility Breakout Prediction Model',
       category: 'machine-learning',
       shortDesc: 'Predicts big SPY moves in either direction for options straddle strategy',
       fullDesc: 'Model predicts when SPY will make a significant move in EITHER direction within 30 minutes. Trading strategy: buy both call AND put options, hold for 30 minutes, profit from the swing regardless of direction. Uses multi-timeframe volatility analysis and price deviation patterns to detect upcoming breakouts.',
       technologies: ['Python', 'XGBoost', 'Pandas', 'Scikit-learn', 'NumPy'],
       metrics: [
-        { label: 'ROC-AUC', value: '0.686' },
-        { label: 'Target', value: '5x ATR from Open' },
-        { label: 'Training Data', value: '1 Year' }
+        { label: 'ROC-AUC', value: '0.6485' },
+        { label: 'Target', value: '5x ATR since open' },
+        {label: "Expected Value", value: '5.5% return per trade'}
       ],
       image: '📈',
       github: '#',
-      demo: 'project-demo/3',
+      demo: 'project-demo/2',
       highlights: [
         'Complete ML pipeline implementation',
         'Multi-timeframe ATR analysis (5, 30, 60, 120 minute windows)',
@@ -79,7 +55,7 @@ const Projects: React.FC = () => {
       ]
     },
     {
-      id: 4,
+      id: 3,
       title: 'Portfolio Website',
       category: 'web-development',
       shortDesc: 'Personal portfolio built with React & Tailwind CSS',
@@ -92,7 +68,7 @@ const Projects: React.FC = () => {
       ],
       image: '💼',
       github: '#',
-      demo: 'project-demo/4',
+      demo: null,
       highlights: [
         'Responsive design for all devices',
         'Dark theme with modern aesthetics',
@@ -102,20 +78,20 @@ const Projects: React.FC = () => {
       ]
     },
     {
-      id: 5,
+      id: 4,
       title: 'Options Profit Prediction Model',
       category: 'machine-learning',
       shortDesc: 'XGBoost model predicting profitable SPY options trades',
-      fullDesc: 'Predicts if buying a SPY option NOW will be profitable by 3:30pm. Strategy: scan all strikes throughout the day, buy when model shows high confidence, sell at 3:30pm. Uses rolling price statistics (5min to 2hr windows) to detect patterns that lead to profitable end-of-day positions.',
+      fullDesc: 'Predicts if buying a SPY option NOW will be profitable by 3:30pm. Strategy: scan strikes open +2% to open-2% throughout the day, buy when model shows high relative confidence, sell at 3:30pm. Uses rolling price statistics (5min to 2hr windows) to detect patterns that lead to profitable end-of-day positions.',
       technologies: ['Python', 'XGBoost', 'Polygon API', 'ThreadPoolExecutor', 'Pandas'],
       metrics: [
-        { label: 'Sections', value: '11' },
         { label: 'Target', value: '3:30pm Profit' },
-        { label: 'Windows', value: '6 Timeframes' }
+        { label: 'ROC-AUC', value: '0.8043' },
+        {label: 'Overall Accuracy', value: '76.52%'}
       ],
       image: '💰',
       github: '#',
-      demo: 'project-demo/5',
+      demo: 'project-demo/4',
       highlights: [
         'Complete workflow: data fetching → features → labeling → training → calibration → deployment',
         'Parallel data fetching with ThreadPoolExecutor for thousands of option contracts',
@@ -280,16 +256,18 @@ const Projects: React.FC = () => {
                     <div className="flex gap-4 mt-auto">
                       <a
                         href={project.github}
-                        className="flex-1 px-4 py-2 bg-slate-600 hover:bg-blue-500 text-white font-semibold rounded transition-colors text-center text-sm"
+                        className={`${project.demo ? 'flex-1' : 'w-full'} px-4 py-2 bg-slate-600 hover:bg-blue-500 text-white font-semibold rounded transition-colors text-center text-sm`}
                       >
                         GitHub
                       </a>
-                      <Link
-                        to={project.demo}
-                        className="flex-1 px-4 py-2 border-2 border-blue-400 text-blue-400 hover:bg-blue-400 hover:text-slate-900 font-semibold rounded transition-colors text-center text-sm"
-                      >
-                        View Project
-                      </Link>
+                      {project.demo && (
+                        <Link
+                          to={project.demo}
+                          className="flex-1 px-4 py-2 border-2 border-blue-400 text-blue-400 hover:bg-blue-400 hover:text-slate-900 font-semibold rounded transition-colors text-center text-sm"
+                        >
+                          View Project
+                        </Link>
+                      )}
                     </div>
                   </div>
                 </div>

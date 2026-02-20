@@ -21,23 +21,23 @@ const Resume: React.FC = () => {
     {/* Metrics */}
     <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
       <div className="bg-slate-900/60 rounded-xl p-6">
-        <h3 className="text-3xl font-bold text-blue-400">+4%</h3>
+        <h3 className="text-3xl font-bold text-blue-400">0.8043</h3>
         <p className="text-slate-300 mt-2">
-          Expected value from ML trading models using XGBoost and live market data
+          ROC-AUC for SPY options profit prediction model using multi-timeframe features
         </p>
       </div>
 
       <div className="bg-slate-900/60 rounded-xl p-6">
-        <h3 className="text-3xl font-bold text-cyan-400">0.46 R²</h3>
+        <h3 className="text-3xl font-bold text-cyan-400">5.5%</h3>
         <p className="text-slate-300 mt-2">
-          NFL rushing yard predictions with engineered workload and matchup features
+          Expected Value per trade from volatility breakout trading strategy over 3 years
         </p>
       </div>
 
       <div className="bg-slate-900/60 rounded-xl p-6">
-        <h3 className="text-3xl font-bold text-blue-400">Production ML</h3>
+        <h3 className="text-3xl font-bold text-blue-400">28.87</h3>
         <p className="text-slate-300 mt-2">
-          Rebuilt clustering pipelines used by marketing analytics teams
+          RMSE for NFL rushing yards prediction with multi-dimensional feature engineering
         </p>
       </div>
     </div>
@@ -66,31 +66,34 @@ const Resume: React.FC = () => {
       <div className="space-y-4">
         <div>
           <h4 className="text-lg font-semibold text-cyan-400">
-            Sports Analytics Predictions
+            NFL Rushing Yards Prediction
           </h4>
           <p className="text-slate-300">
-            Built an XGBoost pipeline on real NFL rushing data with rolling workload and matchup
-            features. Achieved RMSE of 27.8 yards and ROC-AUC of 0.626 on out-of-sample predictions.
+            End-to-end XGBoost pipeline with multi-dimensional feature engineering across player performance, 
+            defensive matchups, and team context. Achieved RMSE of 28.87 yards and ROC-AUC of 0.563 with 
+            comprehensive betting strategy implementation.
           </p>
         </div>
 
         <div>
           <h4 className="text-lg font-semibold text-cyan-400">
-            Live Trading Framework
+            SPY Options Profit Prediction
           </h4>
           <p className="text-slate-300">
-            Built automated intraday SPY options trading framework with Tastytrade dxFeed WebSocket for
-            real-time data, pluggable ML model integration, and Alpaca API for order execution.
+            XGBoost model predicting profitable SPY options trades by 3:30pm market close. 
+            Achieved ROC-AUC of 0.8043 using rolling price statistics across 6 timeframes 
+            with parallel data fetching and walk-forward validation.
           </p>
         </div>
 
         <div>
           <h4 className="text-lg font-semibold text-cyan-400">
-            5 ATR Volatility Breakout Model
+            Volatility Breakout Prediction
           </h4>
           <p className="text-slate-300">
-            Built XGBoost model to predict when SPY will move 5x the expanding average true range from
-            market open within 30 minutes, using multi-timeframe ATR, VWAP distance, and volume patterns.
+            Multi-timeframe volatility analysis model predicting significant SPY moves within 
+            30 minutes. Uses ATR, VWAP distance metrics, and parallel feature generation 
+            for options straddle strategies.
           </p>
         </div>
       </div>
@@ -101,10 +104,9 @@ const Resume: React.FC = () => {
       <h3 className="text-2xl font-bold text-white mb-4">Technical Skills</h3>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-slate-300">
-        <p><span className="text-blue-400 font-semibold">Languages:</span> Python, SQL, C++, JavaScript, TypeScript</p>
-        <p><span className="text-blue-400 font-semibold">ML:</span> XGBoost, scikit-learn, clustering, feature engineering</p>
-        <p><span className="text-blue-400 font-semibold">Data:</span> Pandas, NumPy, Matplotlib, Seaborn, Plotly</p>
-        <p><span className="text-blue-400 font-semibold">Infra:</span> AWS, Docker, Redshift, Firebase</p>
+        <p><span className="text-blue-400 font-semibold">Languages:</span> Python, SQL, JavaScript, TypeScript</p>
+        <p><span className="text-blue-400 font-semibold">ML/Data:</span> XGBoost, scikit-learn, Pandas, NumPy, Matplotlib, feature engineering</p>
+        <p><span className="text-blue-400 font-semibold">Tools:</span> Git, Docker, ThreadPoolExecutor, parallel processing</p>
       </div>
     </div>
 

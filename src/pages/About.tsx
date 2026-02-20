@@ -72,7 +72,7 @@ const About: React.FC = () => {
               <div>
                 <h2 className="text-3xl font-bold text-white mb-4">Professional Summary</h2>
                 <p className="text-slate-300 text-lg leading-relaxed mb-4">
-                  I'm a Data Science enthusiast and incoming graduate with a degree in Applied Mathematics and Computer Science from the University of Delaware's Honors College. Currently, I'm passionate about building machine learning solutions that drive real business value, from predictive analytics to live trading frameworks and ML models.
+                  I'm a Data Science enthusiast and junior in college working towards a degrees in Applied Mathematics and Computer Science from the University of Delaware's Honors College. Currently, I'm passionate about building machine learning solutions that drive real business value, from predictive analytics to live trading frameworks and ML models.
                 </p>
                 <p className="text-slate-300 text-lg leading-relaxed">
                   My experience spans data pipeline development, feature engineering, and deploying production ML models. I combine strong mathematical foundations with practical software engineering to solve complex data-driven problems. I'm particularly interested in financial analytics and sports data science.
